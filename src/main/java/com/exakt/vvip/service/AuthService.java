@@ -26,7 +26,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid username or password");
         }
 
-        if (!user.getActive()) {
+        if (Boolean.FALSE.equals(user.getIsactive())) {
             throw new BadCredentialsException("Account is deactivated");
         }
 
