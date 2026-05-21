@@ -1,7 +1,6 @@
 package com.exakt.vvip.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -19,13 +18,7 @@ public class JwtUtils {
     private long jwtExpirationMs;
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        if (keyBytes.length < 32) {
-            byte[] paddedKey = new byte[64];
-            System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
-            return Keys.hmacShaKeyFor(paddedKey);
-        }
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
     public String generateToken(String username, String role) {
