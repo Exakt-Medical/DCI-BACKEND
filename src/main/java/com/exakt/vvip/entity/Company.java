@@ -16,7 +16,7 @@ public class Company {
     @Column(unique = true, nullable = false, length = 30)
     private String code;
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 255)
     private String name;
 
     @Column(length = 20)
