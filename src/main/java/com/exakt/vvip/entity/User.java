@@ -22,23 +22,6 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    @Column(length = 100)
-    private String email;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean mfaEnabled = true;
-
-    @Column(length = 10)
-    private String mfaCode;
-
-    @Column
-    private java.time.LocalDateTime mfaCodeExpiry;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean mfaVerified = false;
-
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;

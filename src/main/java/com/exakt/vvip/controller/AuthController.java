@@ -1,6 +1,8 @@
 package com.exakt.vvip.controller;
 
-import com.exakt.vvip.dto.*;
+import com.exakt.vvip.dto.LoginRequest;
+import com.exakt.vvip.dto.LoginResponse;
+import com.exakt.vvip.dto.RegisterRequest;
 import com.exakt.vvip.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,21 +16,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Login, 2FA verification, and registration")
+@Tag(name = "Authentication", description = "Login and registration")
 public class AuthController {
 
     private final AuthService authService;
 
     @PostMapping("/login")
-    @Operation(summary = "Login with username and password", description = "Returns JWT token or triggers 2FA")
+    @Operation(summary = "Login with username and password", description = "Returns JWT token")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
-    }
-
-    @PostMapping("/verify-mfa")
-    @Operation(summary = "Verify 2FA code", description = "Submit the 6-digit code sent to email to complete login")
-    public ResponseEntity<LoginResponse> verifyMfa(@Valid @RequestBody MfaVerifyRequest request) {
-        return ResponseEntity.ok(authService.verifyMfa(request));
     }
 
     @PostMapping("/register")

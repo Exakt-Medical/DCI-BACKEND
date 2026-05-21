@@ -36,7 +36,6 @@ com\exakt\vvip\dto\LoginResponse.class
 com\exakt\vvip\security\JwtUtils.class
 com\exakt\vvip\config\SwaggerConfig.class
 com\exakt\vvip\service\InsuranceFeeService.class
-com\exakt\vvip\dto\MfaVerifyRequest.class
 com\exakt\vvip\controller\VerificationController.class
 com\exakt\vvip\dto\DashboardStats$DashboardStatsBuilder.class
 com\exakt\vvip\service\VehicleService.class

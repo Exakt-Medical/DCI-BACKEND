@@ -13,18 +13,14 @@ public class UserDetailsImpl implements UserDetails {
     private final Long id;
     private final String username;
     private final String password;
-    private final String email;
     private final Collection<? extends GrantedAuthority> authorities;
-    private final boolean mfaVerified;
 
-    public UserDetailsImpl(Long id, String username, String password, String email,
-                           Collection<? extends GrantedAuthority> authorities, boolean mfaVerified) {
+    public UserDetailsImpl(Long id, String username, String password,
+                           Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.username = username;
         this.password = password;
-        this.email = email;
         this.authorities = authorities;
-        this.mfaVerified = mfaVerified;
     }
 
     public static UserDetailsImpl build(User user) {
@@ -34,21 +30,11 @@ public class UserDetailsImpl implements UserDetails {
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
-                user.getEmail(),
-                authorities,
-                user.getMfaVerified());
+                authorities);
     }
 
     public Long getId() {
         return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public boolean isMfaVerified() {
-        return mfaVerified;
     }
 
     @Override

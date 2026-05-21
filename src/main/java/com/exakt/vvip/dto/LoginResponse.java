@@ -7,6 +7,5 @@ public class LoginResponse {
     private String token;
     private String username;
     private String role;
-    private boolean mfaRequired;
     private String message;
 }
