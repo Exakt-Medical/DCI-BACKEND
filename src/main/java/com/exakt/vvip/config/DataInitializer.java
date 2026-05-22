@@ -78,6 +78,7 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.save(Role.builder().roleId("MANAGER").roleName("Manager").build());
             roleRepository.save(Role.builder().roleId("AGENT").roleName("Agent").build());
             roleRepository.save(Role.builder().roleId("SUBAGENT").roleName("Sub-Agent").build());
+            roleRepository.save(Role.builder().roleId("VIEWER").roleName("Viewer").build());
         }
     }
 
@@ -118,6 +119,30 @@ public class DataInitializer implements CommandLineRunner {
                     .isactive(true)
                     .build();
             userRepository.save(manager);
+
+            User subagent = User.builder()
+                    .username("subagent")
+                    .password(passwordEncoder.encode("subagent123"))
+                    .userId("SUB-001")
+                    .firstName("Sub")
+                    .lastName("Agent")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.SUBAGENT)
+                    .isactive(true)
+                    .build();
+            userRepository.save(subagent);
+
+            User viewer = User.builder()
+                    .username("viewer")
+                    .password(passwordEncoder.encode("viewer123"))
+                    .userId("VWR-001")
+                    .firstName("Viewer")
+                    .lastName("User")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.VIEWER)
+                    .isactive(true)
+                    .build();
+            userRepository.save(viewer);
         }
     }
 

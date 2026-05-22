@@ -26,8 +26,9 @@ public class Company {
     @Builder.Default
     private String code = "";
 
-    @Column(name = "date_created", length = 50, insertable = false, updatable = false)
-    private String dateCreated;
+    @Column(name = "date_created", length = 50, updatable = false)
+    @Builder.Default
+    private String dateCreated = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
 
     @Column
     @Builder.Default

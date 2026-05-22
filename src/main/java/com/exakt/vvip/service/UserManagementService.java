@@ -143,6 +143,44 @@ public class UserManagementService {
         userRepository.deleteById(id);
     }
 
+    @Transactional
+    public List<UserResponse> bulkCreate(List<UserRequest> requests, String username) {
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return requests.stream().map(request -> {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new RuntimeException("Username already exists: " + request.getUsername());
+            }
+            Branch branch = null;
+            if (request.getBranchId() != null) {
+                branch = branchRepository.findById(request.getBranchId())
+                        .orElseThrow(() -> new RuntimeException("Branch not found"));
+            }
+            User manager = null;
+            if (request.getManagerId() != null) {
+                manager = userRepository.findById(request.getManagerId())
+                        .orElseThrow(() -> new RuntimeException("Manager not found"));
+            }
+            User user = User.builder()
+                    .username(request.getUsername())
+                    .password(passwordEncoder.encode(request.getPassword() != null ? request.getPassword() : "password123"))
+                    .userId(request.getUserId())
+                    .firstName(request.getFirstName())
+                    .lastName(request.getLastName())
+                    .middleInitial(request.getMiddleInitial())
+                    .extName(request.getExtName())
+                    .email(request.getEmail())
+                    .role(request.getRole() != null ? User.UserRole.valueOf(request.getRole().toUpperCase()) : User.UserRole.AGENT)
+                    .branch(branch)
+                    .manager(manager)
+                    .isactive(true)
+                    .isSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : false)
+                    .userstamp(currentUser)
+                    .build();
+            return userRepository.save(user);
+        }).map(this::toResponse).collect(Collectors.toList());
+    }
+
     private UserResponse toResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())

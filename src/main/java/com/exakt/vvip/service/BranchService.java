@@ -86,6 +86,25 @@ public class BranchService {
         branchRepository.deleteById(id);
     }
 
+    @Transactional
+    public List<BranchResponse> bulkCreate(List<BranchRequest> requests, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return requests.stream().map(request -> {
+            Company company = companyRepository.findById(request.getCompanyId())
+                    .orElseThrow(() -> new RuntimeException("Company not found for branch: " + request.getBranchId()));
+            Branch branch = Branch.builder()
+                    .branchId(request.getBranchId())
+                    .branchName(request.getBranchName())
+                    .branchShortname(request.getBranchShortname())
+                    .company(company)
+                    .isactive(true)
+                    .userstamp(user)
+                    .build();
+            return branchRepository.save(branch);
+        }).map(this::toResponse).collect(Collectors.toList());
+    }
+
     private BranchResponse toResponse(Branch branch) {
         return BranchResponse.builder()
                 .id(branch.getId())

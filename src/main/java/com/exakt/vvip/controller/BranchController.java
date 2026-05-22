@@ -66,4 +66,14 @@ public class BranchController {
         branchService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/bulk")
+    @Operation(summary = "Bulk create branches (CSV/Excel upload)")
+    public ResponseEntity<?> bulkCreate(@RequestBody List<BranchRequest> requests, Authentication auth) {
+        try {
+            return ResponseEntity.ok(branchService.bulkCreate(requests, auth.getName()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
 }

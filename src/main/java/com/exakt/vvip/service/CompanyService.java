@@ -75,6 +75,24 @@ public class CompanyService {
         companyRepository.deleteById(id);
     }
 
+    @Transactional
+    public List<CompanyResponse> bulkCreate(List<CompanyRequest> requests, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return requests.stream().map(request -> {
+            Company company = Company.builder()
+                    .companyId(request.getCompanyId())
+                    .companyName(request.getCompanyName())
+                    .companyShortname(request.getCompanyShortname())
+                    .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                    .approvalStatus("APPROVED")
+                    .isactive(true)
+                    .userstamp(user)
+                    .build();
+            return companyRepository.save(company);
+        }).map(this::toResponse).collect(Collectors.toList());
+    }
+
     private CompanyResponse toResponse(Company company) {
         return CompanyResponse.builder()
                 .id(company.getId())
