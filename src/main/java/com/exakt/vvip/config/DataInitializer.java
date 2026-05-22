@@ -7,7 +7,13 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -20,9 +26,18 @@ public class DataInitializer implements CommandLineRunner {
     private final VehicleRepository vehicleRepository;
     private final CompanyRepository companyRepository;
     private final TransactionRepository transactionRepository;
+    private final RoleRepository roleRepository;
+    private final DataSource dataSource;
 
     @Override
     public void run(String... args) {
+        fixTable("companies", List.of("id", "company_id", "company_name", "company_shortname",
+                "code", "name", "isactive", "userstamp", "timestamp"));
+        fixTable("users", List.of("id", "username", "password", "user_id", "first_name", "last_name",
+                "middle_initial", "ext_name", "email", "active", "role", "branch_id", "manager_id",
+                "is_sub_agent", "userstamp", "timestamp"));
+        fixTable("roles", List.of("id", "role_id", "role_name"));
+        initRoles();
         initUsers();
         initInsuranceProducts();
         initInsuranceFees();
@@ -31,27 +46,103 @@ public class DataInitializer implements CommandLineRunner {
         initTransactions();
     }
 
+    private void fixTable(String tableName, List<String> excludeCols) {
+        List<String> columns = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             ResultSet rs = conn.getMetaData().getColumns(null, null, tableName, null)) {
+            while (rs.next()) {
+                String colName = rs.getString("COLUMN_NAME");
+                String nullable = rs.getString("IS_NULLABLE");
+                String def = rs.getString("COLUMN_DEF");
+                if ("NO".equals(nullable) && (def == null || def.isEmpty()) && !excludeCols.contains(colName)) {
+                    columns.add(colName);
+                }
+            }
+        } catch (Exception e) {
+            return;
+        }
+        if (columns.isEmpty()) return;
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            for (String col : columns) {
+                try {
+                    stmt.execute("ALTER TABLE " + tableName + " MODIFY `" + col + "` varchar(255) DEFAULT NULL");
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void initRoles() {
+        if (roleRepository.count() == 0) {
+            roleRepository.save(Role.builder().roleId("ADMIN").roleName("Administrator").build());
+            roleRepository.save(Role.builder().roleId("MANAGER").roleName("Manager").build());
+            roleRepository.save(Role.builder().roleId("AGENT").roleName("Agent").build());
+            roleRepository.save(Role.builder().roleId("SUBAGENT").roleName("Sub-Agent").build());
+            roleRepository.save(Role.builder().roleId("VIEWER").roleName("Viewer").build());
+        }
+    }
+
     private void initUsers() {
         if (userRepository.count() == 0) {
             User admin = User.builder()
                     .username("admin")
                     .password(passwordEncoder.encode("admin123"))
-                    .role(User.UserRole.ADMIN)
-                    .active(true)
+                    .userId("ADM-001")
                     .firstName("Admin")
                     .lastName("User")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.ADMIN)
+                    .isactive(true)
                     .build();
             userRepository.save(admin);
 
             User agent = User.builder()
                     .username("agent")
                     .password(passwordEncoder.encode("agent123"))
-                    .role(User.UserRole.AGENT)
-                    .active(true)
+                    .userId("AGT-001")
                     .firstName("Agent")
                     .lastName("User")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.AGENT)
+                    .isactive(true)
                     .build();
             userRepository.save(agent);
+
+            User manager = User.builder()
+                    .username("manager")
+                    .password(passwordEncoder.encode("manager123"))
+                    .userId("MGR-001")
+                    .firstName("Manager")
+                    .lastName("User")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.MANAGER)
+                    .isactive(true)
+                    .build();
+            userRepository.save(manager);
+
+            User subagent = User.builder()
+                    .username("subagent")
+                    .password(passwordEncoder.encode("subagent123"))
+                    .userId("SUB-001")
+                    .firstName("Sub")
+                    .lastName("Agent")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.SUBAGENT)
+                    .isactive(true)
+                    .build();
+            userRepository.save(subagent);
+
+            User viewer = User.builder()
+                    .username("viewer")
+                    .password(passwordEncoder.encode("viewer123"))
+                    .userId("VWR-001")
+                    .firstName("Viewer")
+                    .lastName("User")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.VIEWER)
+                    .isactive(true)
+                    .build();
+            userRepository.save(viewer);
         }
     }
 
@@ -138,24 +229,15 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initCompanies() {
         if (companyRepository.count() == 0) {
-            companyRepository.save(Company.builder().code("PIC-001").name("Premier Insurance Corp")
-                    .provider("LTO").status(Company.CompanyStatus.ACTIVE).branch("Main")
-                    .address("123 Ayala Ave, Makati City").build());
-            companyRepository.save(Company.builder().code("FGI-002").name("Fortune General Insurance")
-                    .provider("LTO").status(Company.CompanyStatus.PENDING).branch("Cebu Branch")
-                    .address("45 Colon St, Cebu City").build());
-            companyRepository.save(Company.builder().code("MIC-003").name("Malayan Insurance Co.")
-                    .provider("LTO").status(Company.CompanyStatus.ACTIVE).branch("Davao")
-                    .address("78 JP Laurel Ave, Davao City").build());
-            companyRepository.save(Company.builder().code("COC-004").name("Country Bankers Insurance")
-                    .provider("LTO").status(Company.CompanyStatus.INACTIVE).branch("BGC")
-                    .address("11th Ave, BGC, Taguig").build());
-            companyRepository.save(Company.builder().code("SGI-005").name("Standard Insurance Co.")
-                    .provider("LTO").status(Company.CompanyStatus.DECLINED).branch("QC Branch")
-                    .address("12 Quezon Ave, QC").build());
-            companyRepository.save(Company.builder().code("CAI-006").name("Charter Ping An Insurance")
-                    .provider("LTO").status(Company.CompanyStatus.DEACTIVATED).branch("Ortigas")
-                    .address("ADB Ave, Mandaluyong").build());
+            companyRepository.save(Company.builder()
+                    .companyId("PIC-001").code("PIC").companyName("Premier Insurance Corp")
+                    .companyShortname("PIC").isactive(true).build());
+            companyRepository.save(Company.builder()
+                    .companyId("FGI-002").code("FGI").companyName("Fortune General Insurance")
+                    .companyShortname("FGI").isactive(true).build());
+            companyRepository.save(Company.builder()
+                    .companyId("MIC-003").code("MIC").companyName("Malayan Insurance Co.")
+                    .companyShortname("MIC").isactive(true).build());
         }
     }
 
@@ -170,12 +252,6 @@ public class DataInitializer implements CommandLineRunner {
             transactionRepository.save(Transaction.builder()
                     .agent("Ana Lim").company("Fortune General Insurance").assuredName("Carlos Aquino")
                     .authNo("AUTH-2026-00125").build());
-            transactionRepository.save(Transaction.builder()
-                    .agent("Jose Bautista").company("Premier Insurance Corp").assuredName("Elena Ramos")
-                    .authNo("AUTH-2026-00126").build());
-            transactionRepository.save(Transaction.builder()
-                    .agent("Carla Torres").company("Standard Insurance Co.").assuredName("Miguel Fernandez")
-                    .authNo("AUTH-2026-00127").build());
         }
     }
 }

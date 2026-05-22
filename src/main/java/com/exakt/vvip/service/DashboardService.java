@@ -1,7 +1,6 @@
 package com.exakt.vvip.service;
 
 import com.exakt.vvip.dto.DashboardStats;
-import com.exakt.vvip.entity.Company.CompanyStatus;
 import com.exakt.vvip.repository.CompanyRepository;
 import com.exakt.vvip.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Service
 @RequiredArgsConstructor
@@ -20,8 +18,8 @@ public class DashboardService {
 
     public DashboardStats getStats() {
         long total = companyRepository.count();
-        long active = companyRepository.countByStatus(CompanyStatus.ACTIVE);
-        long inactive = companyRepository.countByStatus(CompanyStatus.INACTIVE);
+        long active = 0;
+        long inactive = 0;
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         long today = transactionRepository.countToday(todayStart);
 

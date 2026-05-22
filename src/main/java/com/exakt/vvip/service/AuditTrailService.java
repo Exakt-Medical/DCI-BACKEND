@@ -1,0 +1,74 @@
+package com.exakt.vvip.service;
+
+import com.exakt.vvip.dto.AuditTrailRequest;
+import com.exakt.vvip.dto.AuditTrailResponse;
+import com.exakt.vvip.entity.AuditTrail;
+import com.exakt.vvip.repository.AuditTrailRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class AuditTrailService {
+
+    private final AuditTrailRepository auditTrailRepository;
+
+    public List<AuditTrailResponse> getAll() {
+        return auditTrailRepository.findAll().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public AuditTrailResponse getById(Long id) {
+        return auditTrailRepository.findById(id)
+                .map(this::toResponse)
+                .orElse(null);
+    }
+
+    @Transactional
+    public AuditTrailResponse create(AuditTrailRequest request, String username, String userrole) {
+        AuditTrail auditTrail = AuditTrail.builder()
+                .auditTrailId(request.getAuditTrailId())
+                .actionMade(request.getActionMade())
+                .userstamp(username)
+                .userrole(userrole)
+                .build();
+
+        auditTrail = auditTrailRepository.save(auditTrail);
+        return toResponse(auditTrail);
+    }
+
+    @Transactional
+    public AuditTrailResponse update(Long id, AuditTrailRequest request, String username, String userrole) {
+        AuditTrail auditTrail = auditTrailRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Audit trail not found"));
+
+        auditTrail.setAuditTrailId(request.getAuditTrailId());
+        auditTrail.setActionMade(request.getActionMade());
+        auditTrail.setUserstamp(username);
+        auditTrail.setUserrole(userrole);
+
+        auditTrail = auditTrailRepository.save(auditTrail);
+        return toResponse(auditTrail);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        auditTrailRepository.deleteById(id);
+    }
+
+    private AuditTrailResponse toResponse(AuditTrail auditTrail) {
+        return AuditTrailResponse.builder()
+                .id(auditTrail.getId())
+                .auditTrailId(auditTrail.getAuditTrailId())
+                .actionMade(auditTrail.getActionMade())
+                .userstamp(auditTrail.getUserstamp())
+                .userrole(auditTrail.getUserrole())
+                .timestamp(auditTrail.getTimestamp())
+                .build();
+    }
+}
