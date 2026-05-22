@@ -66,10 +66,14 @@ public class UserManagementController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing user")
-    public ResponseEntity<UserResponse> update(@PathVariable Long id, @RequestBody UserRequest request, Authentication auth) {
-        UserResponse user = userManagementService.update(id, request, auth.getName());
-        if (user == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(user);
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody UserRequest request, Authentication auth) {
+        try {
+            UserResponse user = userManagementService.update(id, request, auth.getName());
+            if (user == null) return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

@@ -36,14 +36,18 @@ public class AuditTrailController {
         return ResponseEntity.ok(record);
     }
 
-    @PostMapping
+    @PostMapping("")
     @Operation(summary = "Create a new audit trail record")
-    public ResponseEntity<AuditTrailResponse> create(@RequestBody AuditTrailRequest request, Authentication auth) {
-        String role = auth.getAuthorities().stream()
-                .findFirst()
-                .map(g -> g.getAuthority().replace("ROLE_", ""))
-                .orElse("");
-        return ResponseEntity.ok(auditTrailService.create(request, auth.getName(), role));
+    public ResponseEntity<?> create(@RequestBody AuditTrailRequest request, Authentication auth) {
+        try {
+            String role = auth.getAuthorities().stream()
+                    .findFirst()
+                    .map(g -> g.getAuthority().replace("ROLE_", ""))
+                    .orElse("");
+            return ResponseEntity.ok(auditTrailService.create(request, auth.getName(), role));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")

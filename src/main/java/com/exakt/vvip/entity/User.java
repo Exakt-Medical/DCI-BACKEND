@@ -50,7 +50,7 @@ public class User {
     @JoinColumn(name = "manager_id")
     private User manager;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "active")
     @Builder.Default
     private Boolean isactive = true;
 
@@ -61,7 +61,7 @@ public class User {
     @JoinColumn(name = "userstamp")
     private User userstamp;
 
-    @Column(nullable = false)
+    @Column(updatable = false)
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 

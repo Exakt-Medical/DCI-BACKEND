@@ -39,6 +39,7 @@ C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entit
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\InsuranceProduct.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\Notification.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\Purchase.java
+C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\Role.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\Transaction.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\User.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\entity\Vehicle.java
@@ -49,6 +50,7 @@ C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repos
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\InsuranceProductRepository.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\NotificationRepository.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\PurchaseRepository.java
+C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\RoleRepository.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\TransactionRepository.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\UserRepository.java
 C:\Workspaces\workspace2026\VVIP\VVIP-BACKEND\src\main\java\com\exakt\vvip\repository\VehicleRepository.java

@@ -26,9 +26,8 @@ public class Company {
     @Builder.Default
     private String code = "";
 
-    @Column(name = "date_created", length = 50)
-    @Builder.Default
-    private String dateCreated = "";
+    @Column(name = "date_created", length = 50, insertable = false, updatable = false)
+    private String dateCreated;
 
     @Column
     @Builder.Default
@@ -38,7 +37,7 @@ public class Company {
     @Builder.Default
     private String approvalStatus = "PENDING";
 
-    @Column(nullable = false)
+    @Column
     @Builder.Default
     private Boolean isactive = true;
 
@@ -46,7 +45,7 @@ public class Company {
     @JoinColumn(name = "userstamp")
     private User userstamp;
 
-    @Column(nullable = false)
+    @Column(updatable = false)
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 }

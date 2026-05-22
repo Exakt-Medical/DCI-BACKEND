@@ -63,6 +63,7 @@ com\exakt\vvip\entity\Purchase$PurchaseStatus.class
 com\exakt\vvip\entity\InsuranceProduct.class
 com\exakt\vvip\entity\Purchase$PurchaseBuilder.class
 com\exakt\vvip\controller\AuthController.class
+com\exakt\vvip\entity\Role.class
 com\exakt\vvip\VvipApplication.class
 com\exakt\vvip\dto\RegisterRequest.class
 com\exakt\vvip\repository\InsuranceFeeRepository.class
@@ -70,11 +71,13 @@ com\exakt\vvip\repository\UserRepository.class
 com\exakt\vvip\dto\CompanyResponse.class
 com\exakt\vvip\dto\LoginResponse$LoginResponseBuilder.class
 com\exakt\vvip\controller\VoucherController.class
+com\exakt\vvip\repository\RoleRepository.class
 com\exakt\vvip\security\JwtUtils.class
 com\exakt\vvip\config\SwaggerConfig.class
 com\exakt\vvip\controller\VerificationController.class
 com\exakt\vvip\dto\UserRequest.class
 com\exakt\vvip\service\VehicleService.class
+com\exakt\vvip\entity\Role$RoleBuilder.class
 com\exakt\vvip\service\AuthService.class
 com\exakt\vvip\service\DashboardService.class
 com\exakt\vvip\dto\NotificationResponse$NotificationResponseBuilder.class

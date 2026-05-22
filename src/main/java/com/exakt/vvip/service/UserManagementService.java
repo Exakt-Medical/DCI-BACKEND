@@ -113,7 +113,9 @@ public class UserManagementService {
                     .orElseThrow(() -> new RuntimeException("Manager not found"));
         }
 
-        user.setUsername(request.getUsername());
+        if (request.getUsername() != null) {
+            user.setUsername(request.getUsername());
+        }
         if (request.getPassword() != null) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
@@ -123,7 +125,7 @@ public class UserManagementService {
         user.setMiddleInitial(request.getMiddleInitial());
         user.setExtName(request.getExtName());
         user.setEmail(request.getEmail());
-        if (request.getRole() != null) {
+        if (request.getRole() != null && !request.getRole().isBlank()) {
             user.setRole(User.UserRole.valueOf(request.getRole().toUpperCase()));
         }
         user.setBranch(branch);

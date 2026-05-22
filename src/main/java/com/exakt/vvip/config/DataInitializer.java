@@ -26,15 +26,18 @@ public class DataInitializer implements CommandLineRunner {
     private final VehicleRepository vehicleRepository;
     private final CompanyRepository companyRepository;
     private final TransactionRepository transactionRepository;
+    private final RoleRepository roleRepository;
     private final DataSource dataSource;
 
     @Override
     public void run(String... args) {
         fixTable("companies", List.of("id", "company_id", "company_name", "company_shortname",
-                "code", "date_created", "name", "isactive", "userstamp", "timestamp"));
+                "code", "name", "isactive", "userstamp", "timestamp"));
         fixTable("users", List.of("id", "username", "password", "user_id", "first_name", "last_name",
                 "middle_initial", "ext_name", "email", "active", "role", "branch_id", "manager_id",
                 "is_sub_agent", "userstamp", "timestamp"));
+        fixTable("roles", List.of("id", "role_id", "role_name"));
+        initRoles();
         initUsers();
         initInsuranceProducts();
         initInsuranceFees();
@@ -67,6 +70,15 @@ public class DataInitializer implements CommandLineRunner {
                 } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}
+    }
+
+    private void initRoles() {
+        if (roleRepository.count() == 0) {
+            roleRepository.save(Role.builder().roleId("ADMIN").roleName("Administrator").build());
+            roleRepository.save(Role.builder().roleId("MANAGER").roleName("Manager").build());
+            roleRepository.save(Role.builder().roleId("AGENT").roleName("Agent").build());
+            roleRepository.save(Role.builder().roleId("SUBAGENT").roleName("Sub-Agent").build());
+        }
     }
 
     private void initUsers() {

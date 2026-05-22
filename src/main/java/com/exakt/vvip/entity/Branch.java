@@ -26,7 +26,7 @@ public class Branch {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @Column(nullable = false)
+    @Column
     @Builder.Default
     private Boolean isactive = true;
 
@@ -34,7 +34,7 @@ public class Branch {
     @JoinColumn(name = "userstamp")
     private User userstamp;
 
-    @Column(nullable = false)
+    @Column(updatable = false)
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 }

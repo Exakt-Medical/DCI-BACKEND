@@ -48,10 +48,14 @@ public class CompanyController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an existing company")
-    public ResponseEntity<CompanyResponse> update(@PathVariable Long id, @RequestBody CompanyRequest request, Authentication auth) {
-        CompanyResponse company = companyService.update(id, request, auth.getName());
-        if (company == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(company);
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody CompanyRequest request, Authentication auth) {
+        try {
+            CompanyResponse company = companyService.update(id, request, auth.getName());
+            if (company == null) return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(company);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

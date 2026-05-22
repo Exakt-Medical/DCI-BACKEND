@@ -25,7 +25,7 @@ public class Notification {
     @Column(length = 50)
     private String userrole;
 
-    @Column(nullable = false)
+    @Column(updatable = false)
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
 }

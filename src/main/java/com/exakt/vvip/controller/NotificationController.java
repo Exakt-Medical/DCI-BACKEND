@@ -36,14 +36,18 @@ public class NotificationController {
         return ResponseEntity.ok(record);
     }
 
-    @PostMapping
+    @PostMapping("")
     @Operation(summary = "Create a new notification")
-    public ResponseEntity<NotificationResponse> create(@RequestBody NotificationRequest request, Authentication auth) {
-        String role = auth.getAuthorities().stream()
-                .findFirst()
-                .map(g -> g.getAuthority().replace("ROLE_", ""))
-                .orElse("");
-        return ResponseEntity.ok(notificationService.create(request, auth.getName(), role));
+    public ResponseEntity<?> create(@RequestBody NotificationRequest request, Authentication auth) {
+        try {
+            String role = auth.getAuthorities().stream()
+                    .findFirst()
+                    .map(g -> g.getAuthority().replace("ROLE_", ""))
+                    .orElse("");
+            return ResponseEntity.ok(notificationService.create(request, auth.getName(), role));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")

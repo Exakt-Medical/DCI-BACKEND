@@ -42,10 +42,14 @@ public class BranchController {
         return ResponseEntity.ok(branch);
     }
 
-    @PostMapping
+    @PostMapping("")
     @Operation(summary = "Create a new branch")
-    public ResponseEntity<BranchResponse> create(@RequestBody BranchRequest request, Authentication auth) {
-        return ResponseEntity.ok(branchService.create(request, auth.getName()));
+    public ResponseEntity<?> create(@RequestBody BranchRequest request, Authentication auth) {
+        try {
+            return ResponseEntity.ok(branchService.create(request, auth.getName()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body(java.util.Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
