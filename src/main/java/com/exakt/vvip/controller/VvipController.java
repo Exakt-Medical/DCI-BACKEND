@@ -46,23 +46,6 @@ public class VvipController {
         return null;
     }
 
-    @GetMapping("/certificates/{certNo}/download")
-    @Operation(summary = "Download DCI certificate PDF")
-    public ResponseEntity<byte[]> downloadCertificate(@PathVariable String certNo) {
-        try {
-            byte[] pdf = dciCertificateService.getCertificatePdfBytes(certNo);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + certNo + ".pdf\"")
-                    .body(pdf);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
     @PostMapping("/lookup")
     @Operation(summary = "Look up vehicle data from VVS without issuing a certificate")
     public ResponseEntity<VvsLookupResponse> lookup(
