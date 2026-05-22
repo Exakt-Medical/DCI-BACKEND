@@ -16,8 +16,11 @@ public class AuditTrail {
     @Column(name = "audit_trail_id")
     private Integer auditTrailId;
 
-    @Column(name = "action_made", length = 500)
+    @Column(name = "action_made", length = 100)
     private String actionMade;
+
+    @Column(length = 500)
+    private String details;
 
     @Column(length = 100)
     private String userstamp;
