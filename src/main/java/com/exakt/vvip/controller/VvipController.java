@@ -2,6 +2,7 @@ package com.exakt.vvip.controller;
 
 import com.exakt.vvip.dto.VehicleVerificationRequest;
 import com.exakt.vvip.dto.VehicleVerificationResponse;
+import com.exakt.vvip.dto.VvsLookupResponse;
 import com.exakt.vvip.security.UserDetailsImpl;
 import com.exakt.vvip.service.DciCertificateService;
 import com.exakt.vvip.service.VerificationService;
@@ -60,5 +61,13 @@ public class VvipController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @PostMapping("/lookup")
+    @Operation(summary = "Look up vehicle data from VVS without issuing a certificate")
+    public ResponseEntity<VvsLookupResponse> lookup(
+            @Valid @RequestBody VehicleVerificationRequest request) {
+        VvsLookupResponse result = verificationService.lookup(request);
+        return ResponseEntity.ok(result);
     }
 }
