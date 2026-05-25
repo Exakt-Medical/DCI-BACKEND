@@ -34,6 +34,7 @@ public class AuditTrailService {
         AuditTrail auditTrail = AuditTrail.builder()
                 .auditTrailId(request.getAuditTrailId())
                 .actionMade(request.getActionMade())
+                .details(request.getDetails())
                 .userstamp(username)
                 .userrole(userrole)
                 .build();
@@ -43,12 +44,24 @@ public class AuditTrailService {
     }
 
     @Transactional
+    public void logAction(String actionMade, String details, String username, String userrole) {
+        AuditTrail auditTrail = AuditTrail.builder()
+                .actionMade(actionMade)
+                .details(details)
+                .userstamp(username)
+                .userrole(userrole)
+                .build();
+        auditTrailRepository.save(auditTrail);
+    }
+
+    @Transactional
     public AuditTrailResponse update(Long id, AuditTrailRequest request, String username, String userrole) {
         AuditTrail auditTrail = auditTrailRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Audit trail not found"));
 
         auditTrail.setAuditTrailId(request.getAuditTrailId());
         auditTrail.setActionMade(request.getActionMade());
+        auditTrail.setDetails(request.getDetails());
         auditTrail.setUserstamp(username);
         auditTrail.setUserrole(userrole);
 
@@ -66,6 +79,7 @@ public class AuditTrailService {
                 .id(auditTrail.getId())
                 .auditTrailId(auditTrail.getAuditTrailId())
                 .actionMade(auditTrail.getActionMade())
+                .details(auditTrail.getDetails())
                 .userstamp(auditTrail.getUserstamp())
                 .userrole(auditTrail.getUserrole())
                 .timestamp(auditTrail.getTimestamp())

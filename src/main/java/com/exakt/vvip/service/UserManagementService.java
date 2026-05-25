@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +22,7 @@ public class UserManagementService {
     private final UserRepository userRepository;
     private final BranchRepository branchRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditTrailService auditTrailService;
 
     public List<UserResponse> getAll() {
         return userRepository.findAll().stream()
@@ -91,6 +93,9 @@ public class UserManagementService {
                 .build();
 
         user = userRepository.save(user);
+        String displayName = (request.getFirstName() + " " + request.getLastName()).trim() + " (" + request.getUsername() + ")";
+        String roleName = request.getRole() != null ? request.getRole() : "AGENT";
+        auditTrailService.logAction("Added a New Account " + displayName + " as " + roleName, "Created user " + displayName + " as " + roleName, username, currentUser.getRole().name());
         return toResponse(user);
     }
 
@@ -100,6 +105,16 @@ public class UserManagementService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String oldUserId = user.getUserId();
+        String oldUsername = user.getUsername();
+        String oldFirstName = user.getFirstName();
+        String oldLastName = user.getLastName();
+        String oldEmail = user.getEmail();
+        String oldRole = user.getRole().name();
+        String oldBranchName = user.getBranch() != null ? user.getBranch().getBranchName() : null;
+        String oldManagerName = user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null;
+        Boolean oldActive = user.getIsactive();
 
         Branch branch = null;
         if (request.getBranchId() != null) {
@@ -135,19 +150,70 @@ public class UserManagementService {
         user.setUserstamp(currentUser);
 
         user = userRepository.save(user);
+        String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
+
+        if (Boolean.FALSE.equals(request.getIsactive()) && Boolean.TRUE.equals(oldActive)) {
+            auditTrailService.logAction("Deactivated Account " + displayName, "Set Account " + displayName + " to inactive", username, currentUser.getRole().name());
+            return toResponse(user);
+        }
+        if (Boolean.TRUE.equals(request.getIsactive()) && Boolean.FALSE.equals(oldActive)) {
+            auditTrailService.logAction("Activated Account " + displayName, "Set Account " + displayName + " to active", username, currentUser.getRole().name());
+            return toResponse(user);
+        }
+        List<String> changes = new ArrayList<>();
+        if (request.getUserId() != null && !oldUserId.equals(request.getUserId())) {
+            changes.add("User ID from '" + oldUserId + "' to '" + request.getUserId() + "'");
+        }
+        if (request.getUsername() != null && !oldUsername.equals(request.getUsername())) {
+            changes.add("Username from '" + oldUsername + "' to '" + request.getUsername() + "'");
+        }
+        if (request.getFirstName() != null && !oldFirstName.equals(request.getFirstName())) {
+            changes.add("First Name from '" + oldFirstName + "' to '" + request.getFirstName() + "'");
+        }
+        if (request.getLastName() != null && !oldLastName.equals(request.getLastName())) {
+            changes.add("Last Name from '" + oldLastName + "' to '" + request.getLastName() + "'");
+        }
+        if (request.getEmail() != null && !oldEmail.equals(request.getEmail())) {
+            changes.add("Email from '" + oldEmail + "' to '" + request.getEmail() + "'");
+        }
+        if (request.getRole() != null && !request.getRole().isBlank() && !oldRole.equals(request.getRole().toUpperCase())) {
+            changes.add("Role from '" + oldRole + "' to '" + request.getRole().toUpperCase() + "'");
+        }
+        String newBranchName = branch != null ? branch.getBranchName() : null;
+        if ((oldBranchName == null && newBranchName != null) || (oldBranchName != null && !oldBranchName.equals(newBranchName))) {
+            changes.add("Branch from '" + oldBranchName + "' to '" + newBranchName + "'");
+        }
+        String newManagerName = manager != null ? manager.getFirstName() + " " + manager.getLastName() : null;
+        if ((oldManagerName == null && newManagerName != null) || (oldManagerName != null && !oldManagerName.equals(newManagerName))) {
+            changes.add("Manager from '" + oldManagerName + "' to '" + newManagerName + "'");
+        }
+        String actionMade, details;
+        if (changes.isEmpty()) {
+            actionMade = "Edited Account " + displayName;
+            details = "No changes detected";
+        } else {
+            actionMade = "Edited Account " + displayName + " (" + String.join("; ", changes) + ")";
+            details = String.join("; ", changes);
+        }
+        auditTrailService.logAction(actionMade, details, username, currentUser.getRole().name());
         return toResponse(user);
     }
 
     @Transactional
     public void delete(Long id) {
+        User user = userRepository.findById(id).orElse(null);
         userRepository.deleteById(id);
+        if (user != null) {
+            String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
+            auditTrailService.logAction("Deleted Account " + displayName, "Deleted user " + displayName, "system", "SYSTEM");
+        }
     }
 
     @Transactional
     public List<UserResponse> bulkCreate(List<UserRequest> requests, String username) {
         User currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return requests.stream().map(request -> {
+        List<UserResponse> responses = requests.stream().map(request -> {
             if (userRepository.existsByUsername(request.getUsername())) {
                 throw new RuntimeException("Username already exists: " + request.getUsername());
             }
@@ -179,6 +245,8 @@ public class UserManagementService {
                     .build();
             return userRepository.save(user);
         }).map(this::toResponse).collect(Collectors.toList());
+        auditTrailService.logAction("Bulk Added " + responses.size() + " Accounts", "Bulk created " + responses.size() + " users", username, currentUser.getRole().name());
+        return responses;
     }
 
     private UserResponse toResponse(User user) {
