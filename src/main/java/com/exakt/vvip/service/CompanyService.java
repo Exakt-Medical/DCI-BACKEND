@@ -22,12 +22,14 @@ public class CompanyService {
     private final UserRepository userRepository;
     private final AuditTrailService auditTrailService;
 
+    @Transactional(readOnly = true)
     public List<CompanyResponse> getAll() {
         return companyRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CompanyResponse getById(Long id) {
         return companyRepository.findById(id)
                 .map(this::toResponse)

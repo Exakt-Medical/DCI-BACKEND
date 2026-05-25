@@ -24,30 +24,35 @@ public class UserManagementService {
     private final PasswordEncoder passwordEncoder;
     private final AuditTrailService auditTrailService;
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAll() {
         return userRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getById(Long id) {
         return userRepository.findById(id)
                 .map(this::toResponse)
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getByBranch(Long branchId) {
         return userRepository.findByBranchId(branchId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getByManager(Long managerId) {
         return userRepository.findByManagerId(managerId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getByRole(String role) {
         return userRepository.findByRole(User.UserRole.valueOf(role.toUpperCase())).stream()
                 .map(this::toResponse)
