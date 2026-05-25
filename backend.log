@@ -335,3 +335,6 @@ org.springframework.security.core.userdetails.UsernameNotFoundException: User no
 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.31.jar:10.1.31]
 	at java.base/java.lang.Thread.run(Thread.java:1575) ~[na:na]
 
+2026-05-23T15:12:56.905+08:00  WARN 4780 --- [exakt-vvip] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=19h46m2s811ms373µs800ns).
+2026-05-23T18:27:20.490+08:00  WARN 4780 --- [exakt-vvip] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3h25s457ms786µs200ns).
+2026-05-25T09:27:48.928+08:00  WARN 4780 --- [exakt-vvip] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1d15h40s225ms829µs300ns).
