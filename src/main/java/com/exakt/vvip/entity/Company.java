@@ -13,32 +13,40 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 30)
-    private String code;
+    @Column(name = "company_id", unique = true, nullable = false, length = 50)
+    private String companyId;
 
-    @Column(nullable = false, length = 150)
-    private String name;
+    @Column(name = "company_name", length = 500)
+    private String companyName;
 
-    @Column(length = 20)
+    @Column(name = "company_shortname", length = 100)
+    private String companyShortname;
+
+    @Column(name = "code", length = 100)
     @Builder.Default
-    private String provider = "LTO";
+    private String code = "";
 
-    @Column(nullable = false, length = 20)
+    @Column(name = "date_created", length = 50, updatable = false)
     @Builder.Default
-    @Enumerated(EnumType.STRING)
-    private CompanyStatus status = CompanyStatus.PENDING;
+    private String dateCreated = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
 
-    @Column(length = 100)
-    private String branch;
-
-    @Column(length = 255)
-    private String address;
-
-    @Column(nullable = false)
+    @Column
     @Builder.Default
-    private LocalDateTime dateCreated = LocalDateTime.now();
+    private String name = "";
 
-    public enum CompanyStatus {
-        PENDING, ACTIVE, INACTIVE, DECLINED, DEACTIVATED
-    }
+    @Column(name = "approval_status", length = 50)
+    @Builder.Default
+    private String approvalStatus = "PENDING";
+
+    @Column
+    @Builder.Default
+    private Boolean isactive = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "userstamp")
+    private User userstamp;
+
+    @Column(updatable = false)
+    @Builder.Default
+    private LocalDateTime timestamp = LocalDateTime.now();
 }

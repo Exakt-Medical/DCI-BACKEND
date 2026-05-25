@@ -28,7 +28,7 @@ public class VerificationController {
     private final TransactionService transactionService;
 
     @PostMapping("/lookup")
-    @Operation(summary = "Look up vehicle from LTO database")
+    @Operation(summary = "Look up vehicle from VVS database")
     public ResponseEntity<?> lookupVehicle(@RequestBody VehicleSearchRequest request) {
         Optional<Vehicle> vehicle = vehicleService.findVehicle(
                 request.getMvFileNo(), request.getPlateNo(),
@@ -42,7 +42,7 @@ public class VerificationController {
         if (vehicle.isPresent()) {
             return ResponseEntity.ok(vehicle.get());
         }
-        return ResponseEntity.ok(Map.of("found", false, "message", "No records found in LTO database"));
+        return ResponseEntity.ok(Map.of("found", false, "message", "No records found in VVS database"));
     }
 
     @PostMapping("/certificate")
