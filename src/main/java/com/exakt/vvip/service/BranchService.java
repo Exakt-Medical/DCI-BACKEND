@@ -25,18 +25,21 @@ public class BranchService {
     private final UserRepository userRepository;
     private final AuditTrailService auditTrailService;
 
+    @Transactional(readOnly = true)
     public List<BranchResponse> getAll() {
         return branchRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<BranchResponse> getByCompany(Long companyId) {
         return branchRepository.findByCompanyId(companyId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public BranchResponse getById(Long id) {
         return branchRepository.findById(id)
                 .map(this::toResponse)
