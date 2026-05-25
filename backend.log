@@ -338,3 +338,16 @@ org.springframework.security.core.userdetails.UsernameNotFoundException: User no
 2026-05-23T15:12:56.905+08:00  WARN 4780 --- [exakt-vvip] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=19h46m2s811ms373µs800ns).
 2026-05-23T18:27:20.490+08:00  WARN 4780 --- [exakt-vvip] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3h25s457ms786µs200ns).
 2026-05-25T09:27:48.928+08:00  WARN 4780 --- [exakt-vvip] [l-1 housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=1d15h40s225ms829µs300ns).
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2 d 18:07 h
+[INFO] Finished at: 2026-05-25T09:36:09+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.3.5:run (default-cli) on project vvip: Process terminated with exit code: -1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
