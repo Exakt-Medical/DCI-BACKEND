@@ -66,6 +66,6 @@ public class User {
     private LocalDateTime timestamp = LocalDateTime.now();
 
     public enum UserRole {
-        ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER
+        ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER, SUPPORT
     }
 }

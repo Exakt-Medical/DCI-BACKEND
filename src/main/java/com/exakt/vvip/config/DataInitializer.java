@@ -37,6 +37,7 @@ public class DataInitializer implements CommandLineRunner {
                 "middle_initial", "ext_name", "email", "active", "role", "branch_id", "manager_id",
                 "is_sub_agent", "userstamp", "timestamp"));
         fixTable("roles", List.of("id", "role_id", "role_name"));
+        ensureRoleColumnSize();
         initRoles();
         initUsers();
         initInsuranceProducts();
@@ -44,6 +45,13 @@ public class DataInitializer implements CommandLineRunner {
         initVehicles();
         initCompanies();
         initTransactions();
+    }
+
+    private void ensureRoleColumnSize() {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE users MODIFY `role` varchar(20) NOT NULL DEFAULT 'AGENT'");
+        } catch (Exception ignored) {}
     }
 
     private void fixTable(String tableName, List<String> excludeCols) {
@@ -79,6 +87,7 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.save(Role.builder().roleId("AGENT").roleName("Agent").build());
             roleRepository.save(Role.builder().roleId("SUBAGENT").roleName("Sub-Agent").build());
             roleRepository.save(Role.builder().roleId("VIEWER").roleName("Viewer").build());
+            roleRepository.save(Role.builder().roleId("SUPPORT").roleName("Support").build());
         }
     }
 
@@ -143,6 +152,20 @@ public class DataInitializer implements CommandLineRunner {
                     .isactive(true)
                     .build();
             userRepository.save(viewer);
+        }
+
+        if (!userRepository.findByUsername("support").isPresent()) {
+            User support = User.builder()
+                    .username("support")
+                    .password(passwordEncoder.encode("support123"))
+                    .userId("SUP-001")
+                    .firstName("Support")
+                    .lastName("User")
+                    .email("exaktdev@exakt.com.ph")
+                    .role(User.UserRole.SUPPORT)
+                    .isactive(true)
+                    .build();
+            userRepository.save(support);
         }
     }
 

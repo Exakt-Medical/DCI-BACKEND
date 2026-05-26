@@ -16,8 +16,11 @@ public class UserResponse {
     private String role;
     private Long branchId;
     private String branchName;
+    private String branchCompanyName;
     private Long managerId;
     private String managerName;
+    private String managerBranchName;
+    private String managerBranchCompanyName;
     private Boolean isactive;
     private Boolean isSubAgent;
     private String userstamp;
