@@ -8,5 +8,6 @@ public class BranchRequest {
     private String branchName;
     private String branchShortname;
     private Long companyId;
+    private String companyCode;
     private Boolean isactive;
 }

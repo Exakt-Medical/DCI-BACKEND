@@ -138,8 +138,16 @@ public class BranchService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         List<BranchResponse> responses = requests.stream().map(request -> {
-            Company company = companyRepository.findById(request.getCompanyId())
-                    .orElseThrow(() -> new RuntimeException("Company not found for branch: " + request.getBranchId()));
+            Company company;
+            if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
+                company = companyRepository.findByCompanyId(request.getCompanyCode())
+                        .orElseThrow(() -> new RuntimeException("Company not found for companyId '" + request.getCompanyCode() + "' for branch: " + request.getBranchId()));
+            } else if (request.getCompanyId() != null) {
+                company = companyRepository.findById(request.getCompanyId())
+                        .orElseThrow(() -> new RuntimeException("Company not found for id " + request.getCompanyId() + " for branch: " + request.getBranchId()));
+            } else {
+                throw new RuntimeException("companyId or companyCode is required for branch " + (request.getBranchId() != null ? "'" + request.getBranchId() + "'" : "") + ". Please check your CSV.");
+            }
             Branch branch = Branch.builder()
                     .branchId(request.getBranchId())
                     .branchName(request.getBranchName())
