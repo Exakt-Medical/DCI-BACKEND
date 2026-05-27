@@ -17,7 +17,9 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class DataInitializer implements CommandLineRunner {
+public class    DataInitializer implements CommandLineRunner {
+
+
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

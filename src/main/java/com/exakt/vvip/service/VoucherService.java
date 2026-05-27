@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class VoucherService {
 
+
+    
     private final InsuranceProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
     private final UserRepository userRepository;

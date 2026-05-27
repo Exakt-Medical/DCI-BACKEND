@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BranchService {
 
+
+
     private final BranchRepository branchRepository;
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
