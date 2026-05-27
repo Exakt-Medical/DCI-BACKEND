@@ -11,12 +11,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/v1/vvip")
@@ -28,16 +26,55 @@ public class VvipController {
     private final VerificationService   verificationService;
     private final DciCertificateService dciCertificateService;
 
+    /**
+     * STEP 1 — User submits identifiers.
+     * Calls VVS GetDetails (MV+Plate first, Engine+Chassis fallback).
+     * Saves a VerificationRequest record and returns verificationId + vehicle details.
+     *
+     * POST /api/v1/vvip/verify
+     */
     @PostMapping("/verify")
-    @Operation(summary = "Submit vehicle for VVIP verification")
+    @Operation(summary = "Submit vehicle identifiers for VVS verification")
     public ResponseEntity<VehicleVerificationResponse> verify(
             @Valid @RequestBody VehicleVerificationRequest request,
             @AuthenticationPrincipal UserDetails principal) {
 
-        Long userId = resolveUserId(principal);
-        VehicleVerificationResponse result = verificationService.verify(request, userId);
-        return ResponseEntity.ok(result);
+        VehicleVerificationResponse result = verificationService.verify(request, resolveUserId(principal));
+        return toResponseEntity(result);
     }
+
+    /**
+     * STEP 2 — User passed voucher/insurance validation and submits Final Review.
+     * Calls VVS ConfirmRequest then generates the PDF certificate.
+     * Only allowed when the record is in VERIFIED status.
+     *
+     * POST /api/v1/vvip/{verificationId}/confirm
+     */
+    @PostMapping("/{verificationId}/confirm")
+    @Operation(summary = "Submit Final Review — calls ConfirmRequest and issues certificate")
+    public ResponseEntity<VehicleVerificationResponse> confirm(
+            @PathVariable Long verificationId,
+            @AuthenticationPrincipal UserDetails principal) {
+
+        VehicleVerificationResponse result = verificationService.confirm(verificationId, resolveUserId(principal));
+        return toResponseEntity(result);
+    }
+
+    /**
+     * OPTIONAL — Preview vehicle data from VVS without saving anything.
+     * Useful for pre-filling the form before the user starts a real verification.
+     *
+     * POST /api/v1/vvip/lookup
+     */
+    @PostMapping("/lookup")
+    @Operation(summary = "Preview vehicle data from VVS — no record saved, cannot be confirmed")
+    public ResponseEntity<VvsLookupResponse> lookup(
+            @Valid @RequestBody VehicleVerificationRequest request) {
+
+        return ResponseEntity.ok(verificationService.lookup(request));
+    }
+
+    // -------------------------------------------------------------------------
 
     private Long resolveUserId(UserDetails principal) {
         if (principal instanceof UserDetailsImpl userDetailsImpl) {
@@ -46,11 +83,16 @@ public class VvipController {
         return null;
     }
 
-    @PostMapping("/lookup")
-    @Operation(summary = "Look up vehicle data from VVS without issuing a certificate")
-    public ResponseEntity<VvsLookupResponse> lookup(
-            @Valid @RequestBody VehicleVerificationRequest request) {
-        VvsLookupResponse result = verificationService.lookup(request);
-        return ResponseEntity.ok(result);
+    private ResponseEntity<VehicleVerificationResponse> toResponseEntity(
+            VehicleVerificationResponse response) {
+        return switch (response.getVerificationStatus()) {
+            case "VERIFIED"  -> ResponseEntity.ok(response);               // 200 — show vehicle details
+            case "COMPLETED" -> ResponseEntity.ok(response);               // 200 — certificate ready
+            case "FAILED"    -> ResponseEntity.unprocessableEntity()       // 422 — no VVS record found
+                    .body(response);
+            case "ERROR"     -> ResponseEntity.internalServerError()       // 500 — API/internal fault
+                    .body(response);
+            default          -> ResponseEntity.internalServerError().body(response);
+        };
     }
 }
