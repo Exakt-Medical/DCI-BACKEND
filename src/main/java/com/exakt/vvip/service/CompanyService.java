@@ -38,21 +38,22 @@ public class CompanyService {
 
     @Transactional
     public CompanyResponse create(CompanyRequest request, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (request.getStatus() == null) request.setStatus("ACTIVE");
+
+        User user = userRepository.findByUsername(username).orElse(null);
 
         Company company = Company.builder()
-                .companyId(request.getCompanyId())
                 .companyName(request.getCompanyName())
-                .companyShortname(request.getCompanyShortname())
                 .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                .provider(request.getProvider())
                 .approvalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : "PENDING")
-                .isactive(request.getIsactive() != null ? request.getIsactive() : true)
+                .status(request.getStatus())
+                .address(request.getAddress())
                 .userstamp(user)
                 .build();
 
         company = companyRepository.save(company);
-        auditTrailService.logAction("Added a New Company " + company.getCompanyName(), "Created company '" + company.getCompanyName() + "'", username, user.getRole().name());
+        auditTrailService.logAction("Added a New Company " + company.getCompanyName(), "Created company '" + company.getCompanyName() + "'", username, user != null ? user.getRole().name() : "SYSTEM");
         return toResponse(company);
     }
 
@@ -64,41 +65,33 @@ public class CompanyService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String oldCompanyId = company.getCompanyId();
         String oldName = company.getCompanyName();
-        String oldShortname = company.getCompanyShortname();
-        String oldStatus = company.getApprovalStatus();
-        Boolean oldActive = company.getIsactive();
+        String oldApprovalStatus = company.getApprovalStatus();
+        String oldStatus = company.getStatus();
 
-        company.setCompanyId(request.getCompanyId());
         company.setCompanyName(request.getCompanyName());
-        company.setCompanyShortname(request.getCompanyShortname());
+        company.setProvider(request.getProvider());
         company.setApprovalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : company.getApprovalStatus());
-        company.setIsactive(request.getIsactive() != null ? request.getIsactive() : company.getIsactive());
+        company.setStatus(request.getStatus() != null ? request.getStatus() : company.getStatus());
+        company.setAddress(request.getAddress());
         company.setUserstamp(user);
 
         company = companyRepository.save(company);
 
-        List<String> changes = new ArrayList<>();
-        if (Boolean.FALSE.equals(request.getIsactive()) && Boolean.TRUE.equals(oldActive)) {
+        if ("INACTIVE".equals(request.getStatus()) && "ACTIVE".equals(oldStatus)) {
             auditTrailService.logAction("Deactivated Company " + company.getCompanyName(), "Set Company " + company.getCompanyName() + " to inactive", username, user.getRole().name());
             return toResponse(company);
         }
-        if (Boolean.TRUE.equals(request.getIsactive()) && Boolean.FALSE.equals(oldActive)) {
+        if ("ACTIVE".equals(request.getStatus()) && "INACTIVE".equals(oldStatus)) {
             auditTrailService.logAction("Activated Company " + company.getCompanyName(), "Set Company " + company.getCompanyName() + " to active", username, user.getRole().name());
             return toResponse(company);
         }
-        if (!oldCompanyId.equals(request.getCompanyId())) {
-            changes.add("Company ID from '" + oldCompanyId + "' to '" + request.getCompanyId() + "'");
-        }
+        List<String> changes = new ArrayList<>();
         if (!oldName.equals(request.getCompanyName())) {
             changes.add("Name from '" + oldName + "' to '" + request.getCompanyName() + "'");
         }
-        if (!oldShortname.equals(request.getCompanyShortname())) {
-            changes.add("Short Name from '" + oldShortname + "' to '" + request.getCompanyShortname() + "'");
-        }
-        if (request.getApprovalStatus() != null && !oldStatus.equals(request.getApprovalStatus())) {
-            changes.add("Approval Status from '" + oldStatus + "' to '" + request.getApprovalStatus() + "'");
+        if (request.getApprovalStatus() != null && !oldApprovalStatus.equals(request.getApprovalStatus())) {
+            changes.add("Approval Status from '" + oldApprovalStatus + "' to '" + request.getApprovalStatus() + "'");
         }
         String actionMade, details;
         if (changes.isEmpty()) {
@@ -123,34 +116,34 @@ public class CompanyService {
 
     @Transactional
     public List<CompanyResponse> bulkCreate(List<CompanyRequest> requests, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByUsername(username).orElse(null);
         List<CompanyResponse> responses = requests.stream().map(request -> {
+            if (request.getStatus() == null) request.setStatus("ACTIVE");
             Company company = Company.builder()
-                    .companyId(request.getCompanyId())
                     .companyName(request.getCompanyName())
-                    .companyShortname(request.getCompanyShortname())
                     .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                    .provider(request.getProvider())
                     .approvalStatus("APPROVED")
-                    .isactive(true)
+                    .status(request.getStatus())
                     .userstamp(user)
                     .build();
             return companyRepository.save(company);
         }).map(this::toResponse).collect(Collectors.toList());
-        auditTrailService.logAction("Bulk Added " + responses.size() + " Companies", "Bulk created " + responses.size() + " companies", username, user.getRole().name());
+        auditTrailService.logAction("Bulk Added " + responses.size() + " Companies", "Bulk created " + responses.size() + " companies", username, user != null ? user.getRole().name() : "SYSTEM");
         return responses;
     }
 
     private CompanyResponse toResponse(Company company) {
         return CompanyResponse.builder()
                 .id(company.getId())
-                .companyId(company.getCompanyId())
                 .companyName(company.getCompanyName())
-                .companyShortname(company.getCompanyShortname())
+                .code(company.getCode())
+                .provider(company.getProvider())
                 .approvalStatus(company.getApprovalStatus())
-                .isactive(company.getIsactive())
+                .status(company.getStatus())
+                .address(company.getAddress())
                 .userstamp(company.getUserstamp() != null ? company.getUserstamp().getUsername() : null)
-                .timestamp(company.getTimestamp())
+                .dateCreated(company.getDateCreated())
                 .build();
     }
 }

@@ -92,8 +92,11 @@ public class UserManagementService {
                 .role(request.getRole() != null ? User.UserRole.valueOf(request.getRole().toUpperCase()) : User.UserRole.AGENT)
                 .branch(branch)
                 .manager(manager)
-                .isactive(request.getIsactive() != null ? request.getIsactive() : true)
-                .isSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : false)
+                .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
+                .mobile(request.getMobile())
+                .isBuyVoucherAllowed(true)
+                .mfaCode("000")
+                .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                 .userstamp(currentUser)
                 .build();
 
@@ -119,7 +122,6 @@ public class UserManagementService {
         String oldRole = user.getRole().name();
         String oldBranchName = user.getBranch() != null ? user.getBranch().getBranchName() : null;
         String oldManagerName = user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null;
-        Boolean oldActive = user.getIsactive();
 
         Branch branch = null;
         if (request.getBranchId() != null) {
@@ -150,18 +152,20 @@ public class UserManagementService {
         }
         user.setBranch(branch);
         user.setManager(manager);
-        user.setIsactive(request.getIsactive() != null ? request.getIsactive() : user.getIsactive());
-        user.setIsSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : user.getIsSubAgent());
+        user.setStatus(request.getStatus() != null ? request.getStatus() : user.getStatus());
+        user.setMobile(request.getMobile());
         user.setUserstamp(currentUser);
 
         user = userRepository.save(user);
         String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
 
-        if (Boolean.FALSE.equals(request.getIsactive()) && Boolean.TRUE.equals(oldActive)) {
+        String newStatus = request.getStatus();
+        String oldStatus = user.getStatus();
+        if ("INACTIVE".equals(newStatus) && "ACTIVE".equals(oldStatus)) {
             auditTrailService.logAction("Deactivated Account " + displayName, "Set Account " + displayName + " to inactive", username, currentUser.getRole().name());
             return toResponse(user);
         }
-        if (Boolean.TRUE.equals(request.getIsactive()) && Boolean.FALSE.equals(oldActive)) {
+        if ("ACTIVE".equals(newStatus) && "INACTIVE".equals(oldStatus)) {
             auditTrailService.logAction("Activated Account " + displayName, "Set Account " + displayName + " to active", username, currentUser.getRole().name());
             return toResponse(user);
         }
@@ -244,8 +248,11 @@ public class UserManagementService {
                     .role(request.getRole() != null ? User.UserRole.valueOf(request.getRole().toUpperCase()) : User.UserRole.AGENT)
                     .branch(branch)
                     .manager(manager)
-                    .isactive(true)
-                    .isSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : false)
+                    .status("ACTIVE")
+                    .mobile(request.getMobile())
+                    .isBuyVoucherAllowed(true)
+                    .mfaCode("000")
+                    .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                     .userstamp(currentUser)
                     .build();
             return userRepository.save(user);
@@ -264,15 +271,23 @@ public class UserManagementService {
                 .middleInitial(user.getMiddleInitial())
                 .extName(user.getExtName())
                 .email(user.getEmail())
+                .mobile(user.getMobile())
                 .role(user.getRole().name())
                 .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
                 .branchName(user.getBranch() != null ? user.getBranch().getBranchName() : null)
+                .branchCompanyName(user.getBranch() != null && user.getBranch().getCompany() != null ? user.getBranch().getCompany().getCompanyName() : null)
                 .managerId(user.getManager() != null ? user.getManager().getId() : null)
                 .managerName(user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null)
-                .isactive(user.getIsactive())
-                .isSubAgent(user.getIsSubAgent())
+                .managerBranchName(user.getManager() != null && user.getManager().getBranch() != null ? user.getManager().getBranch().getBranchName() : null)
+                .managerBranchCompanyName(user.getManager() != null && user.getManager().getBranch() != null && user.getManager().getBranch().getCompany() != null ? user.getManager().getBranch().getCompany().getCompanyName() : null)
+                .status(user.getStatus())
+                .mfaEnabled(user.getMfaEnabled())
+                .mfaVerified(user.getMfaVerified())
+                .mfaCode(user.getMfaCode())
+                .mfaCodeExpiry(user.getMfaCodeExpiry())
+                .isBuyVoucherAllowed(user.getIsBuyVoucherAllowed())
                 .userstamp(user.getUserstamp() != null ? user.getUserstamp().getUsername() : null)
-                .timestamp(user.getTimestamp())
+                .dateCreated(user.getDateCreated())
                 .build();
     }
 }
