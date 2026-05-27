@@ -1,7 +1,6 @@
 package com.exakt.vvip.dto;
 
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class UserResponse {
@@ -13,14 +12,22 @@ public class UserResponse {
     private String middleInitial;
     private String extName;
     private String email;
+    private String mobile;
     private String role;
     private Long branchId;
     private String branchName;
+    private String branchCompanyName;
     private Long managerId;
     private String managerName;
-    private Boolean isactive;
-    private Boolean isSubAgent;
-    private Boolean allowedToBuyVoucher;
+    private String managerBranchName;
+    private String managerBranchCompanyName;
+    private String status;
+    private Boolean mfaEnabled;
+    private Boolean mfaVerified;
+    private String mfaCode;
+    private String mfaCodeExpiry;
+    private Boolean isBuyVoucherAllowed;
+    // private Boolean allowedToBuyVoucher;
     private String userstamp;
-    private LocalDateTime timestamp;
+    private String dateCreated;
 }

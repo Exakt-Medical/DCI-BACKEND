@@ -12,3 +12,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByManagerId(Long managerId);
     List<User> findByRole(User.UserRole role);
 }
+
+
+
+
+
+
+

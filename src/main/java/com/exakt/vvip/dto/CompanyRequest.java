@@ -4,9 +4,9 @@ import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class CompanyRequest {
-    private String companyId;
     private String companyName;
-    private String companyShortname;
+    private String provider;
     private String approvalStatus;
-    private Boolean isactive;
+    private String status;
+    private String address;
 }
