@@ -17,4 +17,5 @@ public class UserRequest {
     private Long managerId;
     private Boolean isactive;
     private Boolean isSubAgent;
+    private Boolean allowedToBuyVoucher;
 }

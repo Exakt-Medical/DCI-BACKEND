@@ -94,6 +94,7 @@ public class UserManagementService {
                 .manager(manager)
                 .isactive(request.getIsactive() != null ? request.getIsactive() : true)
                 .isSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : false)
+                .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                 .userstamp(currentUser)
                 .build();
 
@@ -120,6 +121,7 @@ public class UserManagementService {
         String oldBranchName = user.getBranch() != null ? user.getBranch().getBranchName() : null;
         String oldManagerName = user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null;
         Boolean oldActive = user.getIsactive();
+        Boolean oldAllowedToBuyVoucher = user.getAllowedToBuyVoucher();
 
         Branch branch = null;
         if (request.getBranchId() != null) {
@@ -152,6 +154,7 @@ public class UserManagementService {
         user.setManager(manager);
         user.setIsactive(request.getIsactive() != null ? request.getIsactive() : user.getIsactive());
         user.setIsSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : user.getIsSubAgent());
+        user.setAllowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : user.getAllowedToBuyVoucher());
         user.setUserstamp(currentUser);
 
         user = userRepository.save(user);
@@ -183,6 +186,9 @@ public class UserManagementService {
         }
         if (request.getRole() != null && !request.getRole().isBlank() && !oldRole.equals(request.getRole().toUpperCase())) {
             changes.add("Role from '" + oldRole + "' to '" + request.getRole().toUpperCase() + "'");
+        }
+        if (request.getAllowedToBuyVoucher() != null && !request.getAllowedToBuyVoucher().equals(oldAllowedToBuyVoucher)) {
+            changes.add("Allowed to Buy Voucher from '" + oldAllowedToBuyVoucher + "' to '" + request.getAllowedToBuyVoucher() + "'");
         }
         String newBranchName = branch != null ? branch.getBranchName() : null;
         if ((oldBranchName == null && newBranchName != null) || (oldBranchName != null && !oldBranchName.equals(newBranchName))) {
@@ -246,6 +252,7 @@ public class UserManagementService {
                     .manager(manager)
                     .isactive(true)
                     .isSubAgent(request.getIsSubAgent() != null ? request.getIsSubAgent() : false)
+                    .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                     .userstamp(currentUser)
                     .build();
             return userRepository.save(user);
@@ -271,6 +278,7 @@ public class UserManagementService {
                 .managerName(user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null)
                 .isactive(user.getIsactive())
                 .isSubAgent(user.getIsSubAgent())
+                .allowedToBuyVoucher(user.getAllowedToBuyVoucher())
                 .userstamp(user.getUserstamp() != null ? user.getUserstamp().getUsername() : null)
                 .timestamp(user.getTimestamp())
                 .build();

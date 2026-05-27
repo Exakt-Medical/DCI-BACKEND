@@ -20,6 +20,7 @@ public class UserResponse {
     private String managerName;
     private Boolean isactive;
     private Boolean isSubAgent;
+    private Boolean allowedToBuyVoucher;
     private String userstamp;
     private LocalDateTime timestamp;
 }

@@ -57,6 +57,10 @@ public class User {
     @Builder.Default
     private Boolean isSubAgent = false;
 
+    @Column(name = "is_buy_voucher_allowed")
+    @Builder.Default
+    private Boolean allowedToBuyVoucher = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userstamp")
     private User userstamp;
