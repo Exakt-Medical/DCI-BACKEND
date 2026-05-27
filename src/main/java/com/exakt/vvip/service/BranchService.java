@@ -56,9 +56,8 @@ public class BranchService {
         Branch branch = Branch.builder()
                 .branchId(request.getBranchId())
                 .branchName(request.getBranchName())
-                .branchShortname(request.getBranchShortname())
                 .company(company)
-                .isactive(request.getIsactive() != null ? request.getIsactive() : true)
+                .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
                 .userstamp(user)
                 .build();
 
@@ -78,24 +77,22 @@ public class BranchService {
 
         String oldBranchId = branch.getBranchId();
         String oldName = branch.getBranchName();
-        String oldShortname = branch.getBranchShortname();
         String oldCompanyName = branch.getCompany().getCompanyName();
-        Boolean oldActive = branch.getIsactive();
+        String oldStatus = branch.getStatus();
 
         branch.setBranchId(request.getBranchId());
         branch.setBranchName(request.getBranchName());
-        branch.setBranchShortname(request.getBranchShortname());
         branch.setCompany(company);
-        branch.setIsactive(request.getIsactive() != null ? request.getIsactive() : branch.getIsactive());
+        branch.setStatus(request.getStatus() != null ? request.getStatus() : branch.getStatus());
         branch.setUserstamp(user);
 
         branch = branchRepository.save(branch);
 
-        if (Boolean.FALSE.equals(request.getIsactive()) && Boolean.TRUE.equals(oldActive)) {
+        if ("INACTIVE".equals(request.getStatus()) && "ACTIVE".equals(oldStatus)) {
             auditTrailService.logAction("Deactivated Branch " + branch.getBranchName(), "Set Branch " + branch.getBranchName() + " to inactive", username, user.getRole().name());
             return toResponse(branch);
         }
-        if (Boolean.TRUE.equals(request.getIsactive()) && Boolean.FALSE.equals(oldActive)) {
+        if ("ACTIVE".equals(request.getStatus()) && "INACTIVE".equals(oldStatus)) {
             auditTrailService.logAction("Activated Branch " + branch.getBranchName(), "Set Branch " + branch.getBranchName() + " to active", username, user.getRole().name());
             return toResponse(branch);
         }
@@ -105,9 +102,6 @@ public class BranchService {
         }
         if (!oldName.equals(request.getBranchName())) {
             changes.add("Name from '" + oldName + "' to '" + request.getBranchName() + "'");
-        }
-        if (!oldShortname.equals(request.getBranchShortname())) {
-            changes.add("Short Name from '" + oldShortname + "' to '" + request.getBranchShortname() + "'");
         }
         if (!oldCompanyName.equals(company.getCompanyName())) {
             changes.add("Company from '" + oldCompanyName + "' to '" + company.getCompanyName() + "'");
@@ -138,14 +132,21 @@ public class BranchService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         List<BranchResponse> responses = requests.stream().map(request -> {
-            Company company = companyRepository.findById(request.getCompanyId())
-                    .orElseThrow(() -> new RuntimeException("Company not found for branch: " + request.getBranchId()));
+            Company company;
+            if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
+                company = companyRepository.findByCode(request.getCompanyCode())
+                        .orElseThrow(() -> new RuntimeException("Company not found for code '" + request.getCompanyCode() + "' for branch: " + request.getBranchId()));
+            } else if (request.getCompanyId() != null) {
+                company = companyRepository.findById(request.getCompanyId())
+                        .orElseThrow(() -> new RuntimeException("Company not found for id " + request.getCompanyId() + " for branch: " + request.getBranchId()));
+            } else {
+                throw new RuntimeException("companyId or companyCode is required for branch " + (request.getBranchId() != null ? "'" + request.getBranchId() + "'" : "") + ". Please check your CSV.");
+            }
             Branch branch = Branch.builder()
                     .branchId(request.getBranchId())
                     .branchName(request.getBranchName())
-                    .branchShortname(request.getBranchShortname())
                     .company(company)
-                    .isactive(true)
+                    .status("ACTIVE")
                     .userstamp(user)
                     .build();
             return branchRepository.save(branch);
@@ -159,12 +160,12 @@ public class BranchService {
                 .id(branch.getId())
                 .branchId(branch.getBranchId())
                 .branchName(branch.getBranchName())
-                .branchShortname(branch.getBranchShortname())
                 .companyId(branch.getCompany().getId())
                 .companyName(branch.getCompany().getCompanyName())
-                .isactive(branch.getIsactive())
+                .companyProvider(branch.getCompany().getProvider())
+                .status(branch.getStatus())
                 .userstamp(branch.getUserstamp() != null ? branch.getUserstamp().getUsername() : null)
-                .timestamp(branch.getTimestamp())
+                .dateCreated(branch.getDateCreated())
                 .build();
     }
 }
