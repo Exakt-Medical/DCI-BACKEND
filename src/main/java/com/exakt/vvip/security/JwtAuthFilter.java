@@ -27,7 +27,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
+
+        // Skip authentication for swagger docs
         if (path.startsWith("/swagger-ui") || path.startsWith("/api-docs") || path.startsWith("/v3/api-docs")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // ADD THIS - Skip authentication for transaction logs and webhook
+        if (path.startsWith("/api/transaction-logs") || path.equals("/api/webhook/voucher-redeem")) {
             filterChain.doFilter(request, response);
             return;
         }
