@@ -9,6 +9,7 @@ public class BranchResponse {
     private String branchName;
     private Long companyId;
     private String companyName;
+    private String companyProvider;
     private String status;
     private String userstamp;
     private String dateCreated;

@@ -94,6 +94,8 @@ public class DataInitializer implements CommandLineRunner {
             try { stmt.execute("ALTER TABLE users ADD COLUMN `is_buy_voucher_allowed` tinyint(1) DEFAULT 1"); } catch (Exception ignored) {}
             // COMPANIES: add address column
             try { stmt.execute("ALTER TABLE companies ADD COLUMN `address` varchar(1000) DEFAULT NULL"); } catch (Exception ignored) {}
+            // COMPANIES: add provider column
+            try { stmt.execute("ALTER TABLE companies ADD COLUMN `provider` varchar(200) DEFAULT NULL"); } catch (Exception ignored) {}
 
         } catch (Exception ignored) {}
     }

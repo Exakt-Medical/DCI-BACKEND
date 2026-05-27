@@ -45,6 +45,7 @@ public class CompanyService {
         Company company = Company.builder()
                 .companyName(request.getCompanyName())
                 .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                .provider(request.getProvider())
                 .approvalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : "PENDING")
                 .status(request.getStatus())
                 .address(request.getAddress())
@@ -69,6 +70,7 @@ public class CompanyService {
         String oldStatus = company.getStatus();
 
         company.setCompanyName(request.getCompanyName());
+        company.setProvider(request.getProvider());
         company.setApprovalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : company.getApprovalStatus());
         company.setStatus(request.getStatus() != null ? request.getStatus() : company.getStatus());
         company.setAddress(request.getAddress());
@@ -120,6 +122,7 @@ public class CompanyService {
             Company company = Company.builder()
                     .companyName(request.getCompanyName())
                     .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                    .provider(request.getProvider())
                     .approvalStatus("APPROVED")
                     .status(request.getStatus())
                     .userstamp(user)
@@ -135,6 +138,7 @@ public class CompanyService {
                 .id(company.getId())
                 .companyName(company.getCompanyName())
                 .code(company.getCode())
+                .provider(company.getProvider())
                 .approvalStatus(company.getApprovalStatus())
                 .status(company.getStatus())
                 .address(company.getAddress())
