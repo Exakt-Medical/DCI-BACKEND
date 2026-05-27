@@ -2,7 +2,6 @@ package com.exakt.vvip.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "branches")
@@ -19,22 +18,19 @@ public class Branch {
     @Column(name = "branch_name", length = 500)
     private String branchName;
 
-    @Column(name = "branch_shortname", length = 100)
-    private String branchShortname;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @Column
+    @Column(name = "status", length = 20)
     @Builder.Default
-    private Boolean isactive = true;
+    private String status = "ACTIVE";
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userstamp")
     private User userstamp;
 
-    @Column(updatable = false)
+    @Column(name = "date_created", length = 50, updatable = false)
     @Builder.Default
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private String dateCreated = new java.text.SimpleDateFormat("MMM. dd, yyyy hh:mm a").format(new java.util.Date());
 }

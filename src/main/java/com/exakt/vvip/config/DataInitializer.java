@@ -31,11 +31,12 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        fixTable("companies", List.of("id", "company_id", "company_name", "company_shortname",
-                "code", "name", "isactive", "userstamp", "timestamp"));
+        migrateSchema();
+        fixTable("companies", List.of("id", "company_name", "code", "address", "status", "userstamp", "date_created"));
+        fixTable("branches", List.of("id", "branch_id", "branch_name", "status", "company_id", "userstamp", "date_created"));
         fixTable("users", List.of("id", "username", "password", "user_id", "first_name", "last_name",
-                "middle_initial", "ext_name", "email", "active", "role", "branch_id", "manager_id",
-                "is_sub_agent", "userstamp", "timestamp"));
+                "middle_initial", "ext_name", "email", "mobile", "status", "role",
+                "branch_id", "manager_id", "userstamp", "date_created"));
         fixTable("roles", List.of("id", "role_id", "role_name"));
         ensureRoleColumnSize();
         initRoles();
@@ -45,6 +46,56 @@ public class DataInitializer implements CommandLineRunner {
         initVehicles();
         initCompanies();
         initTransactions();
+    }
+
+    private void migrateSchema() {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+
+            // === COMPANIES ===
+            // Add status column, migrate data from isactive, drop old columns
+            try { stmt.execute("ALTER TABLE companies ADD COLUMN `status` varchar(20) DEFAULT 'ACTIVE'"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE companies SET `status` = 'ACTIVE' WHERE `isactive` = 1"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE companies SET `status` = 'INACTIVE' WHERE `isactive` = 0 OR `isactive` IS NULL"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE companies DROP COLUMN `company_shortname`"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE companies DROP COLUMN `company_id`"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE companies DROP COLUMN `name`"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE companies DROP COLUMN `isactive`"); } catch (Exception ignored) {}
+
+            // === BRANCHES ===
+            try { stmt.execute("ALTER TABLE branches ADD COLUMN `status` varchar(20) DEFAULT 'ACTIVE'"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE branches SET `status` = 'ACTIVE' WHERE `isactive` = 1"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE branches SET `status` = 'INACTIVE' WHERE `isactive` = 0 OR `isactive` IS NULL"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE branches DROP COLUMN `branch_shortname`"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE branches DROP COLUMN `isactive`"); } catch (Exception ignored) {}
+
+            // === USERS ===
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `mfa_enabled` tinyint(1) DEFAULT 0"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `mfa_verified` tinyint(1) DEFAULT 0"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `mfa_code` varchar(50) DEFAULT '000'"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `mfa_code_expiry` varchar(50) DEFAULT ''"); } catch (Exception ignored) {}
+
+            // Rename timestamp to date_created on companies
+            try { stmt.execute("ALTER TABLE companies CHANGE COLUMN `timestamp` `date_created` varchar(50) DEFAULT NULL"); } catch (Exception ignored) {}
+            // Rename timestamp to date_created on branches
+            try { stmt.execute("ALTER TABLE branches CHANGE COLUMN `timestamp` `date_created` varchar(50) DEFAULT NULL"); } catch (Exception ignored) {}
+            // Rename timestamp to date_created on users
+            try { stmt.execute("ALTER TABLE users CHANGE COLUMN `timestamp` `date_created` varchar(50) DEFAULT NULL"); } catch (Exception ignored) {}
+            // USERS: replace isactive with status column
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `status` varchar(20) DEFAULT 'ACTIVE'"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE users SET `status` = 'ACTIVE' WHERE `active` = 1"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE users SET `status` = 'INACTIVE' WHERE `active` = 0 OR `active` IS NULL"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE users DROP COLUMN `active`"); } catch (Exception ignored) {}
+            // USERS: drop is_sub_agent column
+            try { stmt.execute("ALTER TABLE users DROP COLUMN `is_sub_agent`"); } catch (Exception ignored) {}
+            // USERS: add mobile column
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `mobile` varchar(20) DEFAULT NULL"); } catch (Exception ignored) {}
+            // USERS: add is_buy_voucher_allowed column
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `is_buy_voucher_allowed` tinyint(1) DEFAULT 1"); } catch (Exception ignored) {}
+            // COMPANIES: add address column
+            try { stmt.execute("ALTER TABLE companies ADD COLUMN `address` varchar(1000) DEFAULT NULL"); } catch (Exception ignored) {}
+
+        } catch (Exception ignored) {}
     }
 
     private void ensureRoleColumnSize() {
@@ -101,7 +152,8 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("User")
                     .email("exaktdev@exakt.com.ph")
                     .role(User.UserRole.ADMIN)
-                    .isactive(true)
+                    .status("ACTIVE")
+                    .mobile("09171234567")
                     .build();
             userRepository.save(admin);
 
@@ -113,7 +165,8 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("User")
                     .email("exaktdev@exakt.com.ph")
                     .role(User.UserRole.AGENT)
-                    .isactive(true)
+                    .status("ACTIVE")
+                    .mobile("09171234567")
                     .build();
             userRepository.save(agent);
 
@@ -125,7 +178,8 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("User")
                     .email("exaktdev@exakt.com.ph")
                     .role(User.UserRole.MANAGER)
-                    .isactive(true)
+                    .status("ACTIVE")
+                    .mobile("09171234567")
                     .build();
             userRepository.save(manager);
 
@@ -137,7 +191,8 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Agent")
                     .email("exaktdev@exakt.com.ph")
                     .role(User.UserRole.SUBAGENT)
-                    .isactive(true)
+                    .status("ACTIVE")
+                    .mobile("09171234567")
                     .build();
             userRepository.save(subagent);
 
@@ -149,7 +204,8 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("User")
                     .email("exaktdev@exakt.com.ph")
                     .role(User.UserRole.VIEWER)
-                    .isactive(true)
+                    .status("ACTIVE")
+                    .mobile("09171234567")
                     .build();
             userRepository.save(viewer);
         }
@@ -163,7 +219,8 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("User")
                     .email("exaktdev@exakt.com.ph")
                     .role(User.UserRole.SUPPORT)
-                    .isactive(true)
+                    .status("ACTIVE")
+                    .mobile("09171234567")
                     .build();
             userRepository.save(support);
         }
@@ -253,14 +310,14 @@ public class DataInitializer implements CommandLineRunner {
     private void initCompanies() {
         if (companyRepository.count() == 0) {
             companyRepository.save(Company.builder()
-                    .companyId("PIC-001").code("PIC").companyName("Premier Insurance Corp")
-                    .companyShortname("PIC").isactive(true).build());
+                    .code("PIC").companyName("Premier Insurance Corp")
+                    .status("ACTIVE").build());
             companyRepository.save(Company.builder()
-                    .companyId("FGI-002").code("FGI").companyName("Fortune General Insurance")
-                    .companyShortname("FGI").isactive(true).build());
+                    .code("FGI").companyName("Fortune General Insurance")
+                    .status("ACTIVE").build());
             companyRepository.save(Company.builder()
-                    .companyId("MIC-003").code("MIC").companyName("Malayan Insurance Co.")
-                    .companyShortname("MIC").isactive(true).build());
+                    .code("MIC").companyName("Malayan Insurance Co.")
+                    .status("ACTIVE").build());
         }
     }
 

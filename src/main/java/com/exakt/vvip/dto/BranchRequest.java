@@ -6,8 +6,7 @@ import lombok.*;
 public class BranchRequest {
     private String branchId;
     private String branchName;
-    private String branchShortname;
     private Long companyId;
     private String companyCode;
-    private Boolean isactive;
+    private String status;
 }

@@ -2,7 +2,6 @@ package com.exakt.vvip.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -37,6 +36,9 @@ public class User {
     @Column(length = 500)
     private String email;
 
+    @Column(length = 20)
+    private String mobile;
+
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
@@ -50,20 +52,37 @@ public class User {
     @JoinColumn(name = "manager_id")
     private User manager;
 
-    @Column(name = "active")
+    @Column(name = "status", length = 20)
     @Builder.Default
-    private Boolean isactive = true;
+    private String status = "ACTIVE";
 
+    @Column(name = "mfa_enabled")
     @Builder.Default
-    private Boolean isSubAgent = false;
+    private Boolean mfaEnabled = false;
+
+    @Column(name = "mfa_verified")
+    @Builder.Default
+    private Boolean mfaVerified = false;
+
+    @Column(name = "mfa_code", length = 50)
+    @Builder.Default
+    private String mfaCode = "000";
+
+    @Column(name = "mfa_code_expiry", length = 50)
+    @Builder.Default
+    private String mfaCodeExpiry = "";
+
+    @Column(name = "is_buy_voucher_allowed")
+    @Builder.Default
+    private Boolean isBuyVoucherAllowed = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userstamp")
     private User userstamp;
 
-    @Column(updatable = false)
+    @Column(name = "date_created", length = 50, updatable = false)
     @Builder.Default
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private String dateCreated = new java.text.SimpleDateFormat("MMM. dd, yyyy hh:mm a").format(new java.util.Date());
 
     public enum UserRole {
         ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER, SUPPORT
