@@ -19,6 +19,9 @@ public class Company {
     @Builder.Default
     private String code = "";
 
+    @Column(length = 200)
+    private String provider;
+
     @Column(length = 1000)
     private String address;
 

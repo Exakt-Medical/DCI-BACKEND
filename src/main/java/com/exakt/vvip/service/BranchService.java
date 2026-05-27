@@ -162,6 +162,7 @@ public class BranchService {
                 .branchName(branch.getBranchName())
                 .companyId(branch.getCompany().getId())
                 .companyName(branch.getCompany().getCompanyName())
+                .companyProvider(branch.getCompany().getProvider())
                 .status(branch.getStatus())
                 .userstamp(branch.getUserstamp() != null ? branch.getUserstamp().getUsername() : null)
                 .dateCreated(branch.getDateCreated())
