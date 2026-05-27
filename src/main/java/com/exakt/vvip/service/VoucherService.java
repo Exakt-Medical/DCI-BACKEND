@@ -46,9 +46,9 @@ public class VoucherService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (Boolean.FALSE.equals(user.getAllowedToBuyVoucher())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account does not have permission to purchase vouchers");
-        }
+//        if (Boolean.FALSE.equals(user.getAllowedToBuyVoucher())) {
+//            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account does not have permission to purchase vouchers");
+//        }
 
         String policyNumber = "CTPL-" + java.time.Year.now().getValue() + "-" +
                 String.format("%06d", (int)(Math.random() * 1000000));

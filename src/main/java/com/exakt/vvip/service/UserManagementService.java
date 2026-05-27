@@ -123,6 +123,8 @@ public class UserManagementService {
         String oldRole = user.getRole().name();
         String oldBranchName = user.getBranch() != null ? user.getBranch().getBranchName() : null;
         String oldManagerName = user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null;
+        Boolean oldAllowedToBuyVoucher = user.getIsBuyVoucherAllowed();
+
 
         Branch branch = null;
         if (request.getBranchId() != null) {

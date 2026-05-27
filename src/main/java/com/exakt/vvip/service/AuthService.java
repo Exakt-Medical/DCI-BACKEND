@@ -38,7 +38,7 @@ public class AuthService {
                 .token(token)
                 .username(user.getUsername())
                 .role(user.getRole().name())
-                .allowedToBuyVoucher(user.getAllowedToBuyVoucher())
+//                .allowedToBuyVoucher(user.getAllowedToBuyVoucher())
                 .message("Login successful")
                 .build();
     }

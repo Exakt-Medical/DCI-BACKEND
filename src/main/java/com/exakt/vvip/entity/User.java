@@ -76,9 +76,9 @@ public class User {
     @Builder.Default
     private Boolean isBuyVoucherAllowed = true;
 
-    @Column(name = "is_buy_voucher_allowed")
-    @Builder.Default
-    private Boolean allowedToBuyVoucher = false;
+    // @Column(name = "is_buy_voucher_allowed")
+    // @Builder.Default
+    // private Boolean allowedToBuyVoucher = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userstamp")
