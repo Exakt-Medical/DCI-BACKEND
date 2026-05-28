@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class VoucherService {
 
 
-    
+
     private final InsuranceProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
     private final UserRepository userRepository;
