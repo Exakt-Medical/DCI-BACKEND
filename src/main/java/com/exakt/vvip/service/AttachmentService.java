@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -26,10 +25,8 @@ public class AttachmentService {
     }
 
     public Attachment create(AttachmentRequest request) {
-
         Attachment attachment = Attachment.builder()
                 .referenceNumber(request.getReferenceNumber())
-                .requestedBy(request.getRequestedBy())
                 .crAttachment(request.getCrAttachment())
                 .plateCertificationAttachment(request.getPlateCertificationAttachment())
                 .actualPlateAttachment(request.getActualPlateAttachment())
@@ -39,12 +36,10 @@ public class AttachmentService {
     }
 
     public Attachment update(Long id, AttachmentRequest request) {
-
         Attachment attachment = attachmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Attachment not found"));
 
         attachment.setReferenceNumber(request.getReferenceNumber());
-        attachment.setRequestedBy(request.getRequestedBy());
         attachment.setCrAttachment(request.getCrAttachment());
         attachment.setPlateCertificationAttachment(request.getPlateCertificationAttachment());
         attachment.setActualPlateAttachment(request.getActualPlateAttachment());
@@ -58,7 +53,7 @@ public class AttachmentService {
 
     public Attachment uploadAttachment(
             String referenceNumber,
-            String requestedBy,
+            String requestedBy,  // Parameter kept for API compatibility but not stored
             MultipartFile crAttachment,
             MultipartFile plateCertificationAttachment,
             MultipartFile actualPlateAttachment
@@ -66,24 +61,20 @@ public class AttachmentService {
 
         Attachment attachment = Attachment.builder()
                 .referenceNumber(referenceNumber)
-                .requestedBy(requestedBy)
                 .crAttachment(getBytes(crAttachment))
                 .plateCertificationAttachment(getBytes(plateCertificationAttachment))
                 .actualPlateAttachment(getBytes(actualPlateAttachment))
-                .dateRequested(LocalDateTime.now())
-                .dateUpdated(LocalDateTime.now())
-                .status("PENDING")
                 .build();
 
         return attachmentRepository.save(attachment);
     }
 
     private byte[] getBytes(MultipartFile file) throws IOException {
-
         if (file == null || file.isEmpty()) {
             return null;
         }
-
         return file.getBytes();
     }
+
+
 }

@@ -68,7 +68,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/branches/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
-                        .requestMatchers("/api/attachment/**").permitAll()
+                        // FIXED: Change from permitAll() to authenticated() for attachment uploads
+                        .requestMatchers("/api/attachment/upload").authenticated()  // Require authentication for upload
+                        .requestMatchers("/api/attachment/**").authenticated()       // Require authentication for all attachment endpoints
+                        .requestMatchers("/api/attachment/*/image/*").permitAll() // Explicitly allow image endpoints
                         .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT", "LTO")
                         .requestMatchers("/api/support-ticket/**").hasAnyRole("ADMIN", "MANAGER", "LTO")
                         .requestMatchers("/api/v1/vvip/**").authenticated()
