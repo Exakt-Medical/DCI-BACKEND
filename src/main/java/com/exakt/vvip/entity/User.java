@@ -89,6 +89,6 @@ public class User {
     private String dateCreated = new java.text.SimpleDateFormat("MMM. dd, yyyy hh:mm a").format(new java.util.Date());
 
     public enum UserRole {
-        ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER, SUPPORT
+        ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER, SUPPORT, LTO
     }
 }

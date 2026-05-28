@@ -5,114 +5,122 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Maps the raw VVS GetDetails JSON response.
+ *
+ * VVS response shape:
+ * {
+ *   "requestID": "71",
+ *   "mvFileNo": "13242500000003A",
+ *   "engineNumber": "ENG-PMVIC-2025-09030003",
+ *   "chassisNumber": "CHA-PMVIC-2025-09030003",
+ *   "plateNumber": "CEC2503",
+ *   "make": "Honda",
+ *   "series": "NA",
+ *   "color": "NOT AVAILABLE",
+ *   "yearModel": "2013",
+ *   "classification": "PRIVATE",
+ *   "bodyType": "SEDAN - 4-DOOR",
+ *   "denomination": "LIGHT",
+ *   "lastRegistrationDate": "10/01/2023",
+ *   "owner": { "firstName": "...", "middelName": "...", "lastName": "...", "organization": "" },
+ *   "address": { "houseBldgNo": "...", "streetName": "...", "barangay": "...",
+ *                "municipality": "...", "province": "...", "region": "...", "zipCode": "..." }
+ * }
+ */
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class VvsVehicleData {
 
+    // --- VVS request tracking ---
     @JsonProperty("requestID")
     private String requestId;
+
+    // --- Vehicle identifiers ---
     @JsonProperty("mvFileNo")
     private String mvFileNo;
-    @JsonProperty("engineNumber")
-    private String engineNo;
-    @JsonProperty("chassisNumber")
-    private String chassisNo;
+
     @JsonProperty("plateNumber")
     private String plateNo;
+
+    @JsonProperty("engineNumber")
+    private String engineNo;
+
+    @JsonProperty("chassisNumber")
+    private String chassisNo;
+
+    // --- Vehicle details ---
     @JsonProperty("make")
     private String make;
-    @JsonProperty("mvType")
+
+    @JsonProperty("series")
     private String series;
+
     @JsonProperty("color")
     private String color;
+
     @JsonProperty("yearModel")
     private String yearModel;
+
     @JsonProperty("classification")
     private String classification;
+
     @JsonProperty("bodyType")
     private String bodyType;
+
     @JsonProperty("denomination")
     private String denomination;
+
     @JsonProperty("lastRegistrationDate")
     private String lastRegistrationDate;
 
-    // Nested owner object
+    // --- Owner (nested object flattened via @JsonProperty on setter) ---
     @JsonProperty("owner")
-    private VvsOwner owner;
+    private void unpackOwner(java.util.Map<String, String> owner) {
+        if (owner == null) return;
+        this.ownerFirstName  = owner.get("firstName");
+        this.ownerMiddleName = owner.get("middelName");   // VVS typo: "middelName"
+        this.ownerLastName   = owner.get("lastName");
+        this.ownerOrganization = owner.get("organization");
+    }
 
-    // Nested address object
+    private String ownerFirstName;
+    private String ownerMiddleName;
+    private String ownerLastName;
+    private String ownerOrganization;
+
+    // --- Address (nested object flattened) ---
     @JsonProperty("address")
-    private VvsAddress address;
-
-    // ── Nested classes ────────────────────────────────────────
-
-    @Getter
-    @Setter
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class VvsOwner {
-        @JsonProperty("firstName")
-        private String firstName;
-        @JsonProperty("middelName")
-        private String middleName;  // VVS typo
-        @JsonProperty("lastName")
-        private String lastName;
-        @JsonProperty("organization")
-        private String organization;
+    private void unpackAddress(java.util.Map<String, String> address) {
+        if (address == null) return;
+        this.addressHouseBldgNo  = address.get("houseBldgNo");
+        this.addressStreetName   = address.get("streetName");
+        this.addressBarangay     = address.get("barangay");
+        this.addressMunicipality = address.get("municipality");
+        this.addressProvince     = address.get("province");
+        this.addressRegion       = address.get("region");
+        this.addressZipCode      = address.get("zipCode");
     }
 
-    @Getter
-    @Setter
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class VvsAddress {
-        @JsonProperty("houseBldgNo")
-        private String houseBldgNo;
-        @JsonProperty("streetName")
-        private String streetName;
-        @JsonProperty("barangay")
-        private String barangay;
-        @JsonProperty("municipality")
-        private String municipality;
-        @JsonProperty("province")
-        private String province;
-        @JsonProperty("region")
-        private String region;
-        @JsonProperty("zipCode")
-        private String zipCode;
-    }
+    private String addressHouseBldgNo;
+    private String addressStreetName;
+    private String addressBarangay;
+    private String addressMunicipality;
+    private String addressProvince;
+    private String addressRegion;
+    private String addressZipCode;
 
-
-    public String getOwnerFirstName() {
-        return owner != null ? nvl(owner.getFirstName()) : "";
-    }
-
-    public String getOwnerMiddleName() {
-        return owner != null ? nvl(owner.getMiddleName()) : "";
-    }
-
-    public String getOwnerLastName() {
-        return owner != null ? nvl(owner.getLastName()) : "";
-    }
-
+    // --- Convenience: full owner name for display ---
     public String getFullOwnerName() {
         return String.join(" ",
-                getOwnerFirstName(),
-                getOwnerMiddleName(),
-                getOwnerLastName()
+                blankToEmpty(ownerFirstName),
+                blankToEmpty(ownerMiddleName),
+                blankToEmpty(ownerLastName)
         ).trim();
     }
 
-    public String getFullAddress() {
-        if (address == null) return "";
-        return String.join(", ",
-                nvl(address.getHouseBldgNo()),
-                nvl(address.getStreetName()),
-                nvl(address.getBarangay()),
-                nvl(address.getMunicipality()),
-                nvl(address.getProvince()),
-                nvl(address.getRegion())
-        );
+    private static String blankToEmpty(String s) {
+        return (s == null || s.isBlank() || s.equalsIgnoreCase("NPLA")) ? "" : s.trim();
     }
-
-    private String nvl(String v) { return v != null ? v : ""; }
 }

@@ -8,6 +8,7 @@ public class BranchResponse {
     private String branchId;
     private String branchName;
     private Long companyId;
+    private String companyCode;
     private String companyName;
     private String companyProvider;
     private String status;
