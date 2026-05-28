@@ -3,6 +3,7 @@ package com.exakt.vvip.service;
 import com.exakt.vvip.config.TlpeApiProperties;
 import com.exakt.vvip.dto.PaymentsRequest;
 import com.exakt.vvip.dto.PaymentsResponse;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,6 +13,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -30,77 +36,114 @@ public class PaymentsService {
     }
 
     public PaymentsResponse createPaymentLink(PaymentsRequest request) {
+        validateRequest(request);
+
+        request.setKey(props.getAuthKey());
+
+        String paymentUrl = resolvePaymentUrl();
+        HttpEntity<PaymentsRequest> entity = buildHttpEntity(request);
+        String rawBody = callTlpeApi(paymentUrl, entity);
+
+        return extractResponse(rawBody);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private void validateRequest(PaymentsRequest request) {
         if (request == null) {
             throw new PaymentException("Request body is required");
         }
+    }
 
-        // attach key to the outgoing request
-        request.setKey(props.getAuthKey());
-
+    private HttpEntity<PaymentsRequest> buildHttpEntity(PaymentsRequest request) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        return new HttpEntity<>(request, headers);
+    }
 
-        // Use the configured payment URL as-is (TLPE expects token in query params)
-        // But normalize token param: strip any leading "Bearer " prefix if present so the
-        // query param contains the raw JWT (Postman / TLPE examples use token=<jwt>).
-        String paymentUrl = props.getPayment();
-        try {
-            if (paymentUrl != null && paymentUrl.contains("token=")) {
-                String[] parts = paymentUrl.split("token=", 2);
-                String before = parts[0];
-                String after = parts[1];
-                String tokenPart = after.split("&", 2)[0];
-                String decoded = java.net.URLDecoder.decode(tokenPart, java.nio.charset.StandardCharsets.UTF_8.name());
-                // If decoded token contains a Bearer prefix, remove it
-                if (decoded != null && decoded.startsWith("Bearer ")) {
-                    decoded = decoded.substring("Bearer ".length());
-                }
-                if (decoded == null) {
-                    decoded = "";
-                }
-                // Re-encode the cleaned token and rebuild the URL
-                String encoded = java.net.URLEncoder.encode(decoded, java.nio.charset.StandardCharsets.UTF_8.name());
-                String cleaned;
-                if (after.contains("&")) {
-                    String rest = after.substring(after.indexOf('&') + 1);
-                    cleaned = before + "token=" + encoded + "&" + rest;
-                } else {
-                    cleaned = before + "token=" + encoded;
-                }
-                paymentUrl = cleaned;
-            }
-        } catch (Exception e) {
-            log.warn("Failed to normalize token query param: {}", e.getMessage());
-        }
-
-        HttpEntity<PaymentsRequest> entity = new HttpEntity<>(request, headers);
-
-        if (paymentUrl == null || paymentUrl.isBlank()) {
+    private String resolvePaymentUrl() {
+        String url = props.getPayment();
+        if (url == null || url.isBlank()) {
             throw new PaymentException("TLPE payment URL is not configured");
         }
+        return stripBearerFromTokenParam(url);
+    }
 
-        String responseBody;
+    /**
+     * TLPE expects a raw JWT in the {@code token} query parameter.
+     * If the URL was built with a "Bearer <jwt>" value, strip the prefix.
+     */
+    private String stripBearerFromTokenParam(String url) {
+        if (!url.contains("token=")) {
+            return url;
+        }
         try {
-            org.springframework.http.ResponseEntity<String> resp = restTemplate.exchange(
-                    paymentUrl,
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
-            responseBody = resp.getBody();
+            int tokenStart = url.indexOf("token=") + "token=".length();
+            int tokenEnd   = url.indexOf('&', tokenStart);
+
+            String encoded = tokenEnd == -1
+                    ? url.substring(tokenStart)
+                    : url.substring(tokenStart, tokenEnd);
+
+            String decoded = URLDecoder.decode(encoded, StandardCharsets.UTF_8);
+            if (decoded.startsWith("Bearer ")) {
+                decoded = decoded.substring("Bearer ".length());
+            }
+
+            String reEncoded = URLEncoder.encode(decoded, StandardCharsets.UTF_8);
+            String suffix    = tokenEnd == -1 ? "" : url.substring(tokenEnd);
+
+            return url.substring(0, tokenStart) + reEncoded + suffix;
+
+        } catch (Exception e) {
+            log.warn("Could not normalize token query param, using URL as-is: {}", e.getMessage());
+            return url;
+        }
+    }
+
+    private String callTlpeApi(String url, HttpEntity<PaymentsRequest> entity) {
+        try {
+            return restTemplate
+                    .exchange(url, HttpMethod.POST, entity, String.class)
+                    .getBody();
         } catch (Exception e) {
             throw new PaymentException("TLPE payment call failed: " + e.getMessage(), e);
         }
-
-        // Return whatever TLPE returned (JSON link or HTML page) in the PaymentsResponse.link
-        return PaymentsResponse.builder().link(responseBody).build();
     }
 
-    // Note: we now return TLPE's raw response body directly inside PaymentsResponse.link
+    /**
+     * TLPE returns a single-level JSON response:
+     * {"link": "https://..."}
+     *
+     * We parse the outer JSON and read the link field directly.
+     */
+    private PaymentsResponse extractResponse(String rawBody) {
+        try {
+            JsonNode outer = objectMapper.readTree(rawBody);
+            String linkValue = outer.path("link").asText();
+
+            if (linkValue.isBlank()) {
+                throw new PaymentException("TLPE response contained no usable link");
+            }
+
+            return PaymentsResponse.builder().link(linkValue).build();
+
+        } catch (PaymentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new PaymentException("Failed to parse TLPE response: " + e.getMessage(), e);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Exception
+    // -------------------------------------------------------------------------
 
     public static class PaymentException extends RuntimeException {
-        public PaymentException(String msg) { super(msg); }
+        public PaymentException(String msg)                  { super(msg); }
         public PaymentException(String msg, Throwable cause) { super(msg, cause); }
     }
 }
