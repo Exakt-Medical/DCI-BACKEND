@@ -1,6 +1,6 @@
 package com.exakt.vvip.service;
 
-import com.exakt.vvip.dto.AttachmentController;
+import com.exakt.vvip.dto.AttachmentRequest;
 import com.exakt.vvip.entity.Attachment;
 import com.exakt.vvip.repository.AttachmentRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ public class AttachmentService {
         return attachmentRepository.findById(id).orElse(null);
     }
 
-    public Attachment create(AttachmentController request) {
+    public Attachment create(AttachmentRequest request) {
 
         Attachment attachment = Attachment.builder()
                 .referenceNumber(request.getReferenceNumber())
@@ -34,7 +34,7 @@ public class AttachmentService {
         return attachmentRepository.save(attachment);
     }
 
-    public Attachment update(Long id, AttachmentController request) {
+    public Attachment update(Long id, AttachmentRequest request) {
 
         Attachment attachment = attachmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Attachment not found"));
