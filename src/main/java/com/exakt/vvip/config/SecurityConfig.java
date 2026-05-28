@@ -68,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/branches/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
+                        .requestMatchers("/api/attachment/**").permitAll()
                         .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT", "LTO")
                         .requestMatchers("/api/support-ticket/**").hasAnyRole("ADMIN", "MANAGER", "LTO")
                         .requestMatchers("/api/v1/vvip/**").authenticated()
