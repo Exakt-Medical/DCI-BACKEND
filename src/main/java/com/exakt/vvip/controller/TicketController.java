@@ -69,9 +69,10 @@ public class TicketController {
                 .name(request.getName())
                 .address(request.getAddress())
 
-                .certificateOfRegistration(request.getCertificateOfRegistration())
+               // .certificateOfRegistration(request.getCertificateOfRegistration())
                 .plateCertification(request.getPlateCertification())
                 .actualPlate(request.getActualPlate())
+                .crAttachment(request.getCrAttachment())
                 .build();
 
         return ResponseEntity.ok(ticketRepository.save(ticket));
@@ -109,9 +110,11 @@ public class TicketController {
                     ticket.setName(request.getName());
                     ticket.setAddress(request.getAddress());
 
-                    ticket.setCertificateOfRegistration(request.getCertificateOfRegistration());
+                   // ticket.setCertificateOfRegistration(request.getCertificateOfRegistration());
                     ticket.setPlateCertification(request.getPlateCertification());
                     ticket.setActualPlate(request.getActualPlate());
+                    ticket.setCrAttachment(request.getCrAttachment());
+
 
                     return ResponseEntity.ok(ticketRepository.save(ticket));
                 })

@@ -35,6 +35,7 @@ public class TicketRequest {
     private String address;
 
     private String certificateOfRegistration;
+    private String crAttachment;
     private String plateCertification;
     private String actualPlate;
 }
