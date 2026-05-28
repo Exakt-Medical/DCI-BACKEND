@@ -50,8 +50,9 @@ public class BranchService {
     public BranchResponse create(BranchRequest request, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Company company = companyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found"));
+        String companyCode = request.getCompanyCode() != null ? request.getCompanyCode() : String.valueOf(request.getCompanyId());
+        Company company = companyRepository.findByCode(companyCode)
+                .orElseThrow(() -> new RuntimeException("Company not found for code: " + companyCode));
 
         Branch branch = Branch.builder()
                 .branchId(request.getBranchId())
@@ -72,8 +73,9 @@ public class BranchService {
                 .orElseThrow(() -> new RuntimeException("Branch not found"));
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Company company = companyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found"));
+        String companyCode = request.getCompanyCode() != null ? request.getCompanyCode() : String.valueOf(request.getCompanyId());
+        Company company = companyRepository.findByCode(companyCode)
+                .orElseThrow(() -> new RuntimeException("Company not found for code: " + companyCode));
 
         String oldBranchId = branch.getBranchId();
         String oldName = branch.getBranchName();
@@ -156,13 +158,15 @@ public class BranchService {
     }
 
     private BranchResponse toResponse(Branch branch) {
+        Company c = branch.getCompany();
         return BranchResponse.builder()
                 .id(branch.getId())
                 .branchId(branch.getBranchId())
                 .branchName(branch.getBranchName())
-                .companyId(branch.getCompany().getId())
-                .companyName(branch.getCompany().getCompanyName())
-                .companyProvider(branch.getCompany().getProvider())
+                .companyId(c != null ? c.getId() : null)
+                .companyCode(c != null ? c.getCode() : null)
+                .companyName(c != null ? c.getCompanyName() : null)
+                .companyProvider(c != null ? c.getProvider() : null)
                 .status(branch.getStatus())
                 .userstamp(branch.getUserstamp() != null ? branch.getUserstamp().getUsername() : null)
                 .dateCreated(branch.getDateCreated())

@@ -4,8 +4,10 @@ import com.exakt.vvip.dto.*;
 import com.exakt.vvip.entity.*;
 import com.exakt.vvip.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +16,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class VoucherService {
+
+
 
     private final InsuranceProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
@@ -41,6 +45,10 @@ public class VoucherService {
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+//        if (Boolean.FALSE.equals(user.getAllowedToBuyVoucher())) {
+//            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account does not have permission to purchase vouchers");
+//        }
 
         String policyNumber = "CTPL-" + java.time.Year.now().getValue() + "-" +
                 String.format("%06d", (int)(Math.random() * 1000000));

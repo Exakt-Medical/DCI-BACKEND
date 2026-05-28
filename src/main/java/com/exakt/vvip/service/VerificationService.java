@@ -18,20 +18,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class VerificationService {
 
-    private static final int VERIFICATION_THRESHOLD = 1;
-    private final VerificationRequestRepository     verificationRepo;
-    private final VerificationVvsLogRepository vvsLogRepo;
+    private final VerificationRequestRepository   verificationRepo;
+    private final VerificationVvsLogRepository    vvsLogRepo;
     private final VerificationInsuranceRepository insuranceRepo;
-    private final VvsApiClient                      vvsApiClient;
-    private final DciCertificateService             dciCertificateService;
+    private final VvsApiClient                    vvsApiClient;
+    private final DciCertificateService           dciCertificateService;
+
+    // -------------------------------------------------------------------------
+    // STEP 2-3 — GetDetails: choose ONE endpoint, verify on API success
+    // -------------------------------------------------------------------------
 
     @Transactional
     public VehicleVerificationResponse verify(VehicleVerificationRequest request, Long userId) {
@@ -43,66 +44,53 @@ public class VerificationService {
         vvsLog.setVerificationId(record.getId());
 
         try {
-            // Get token of VVS API
             String token = vvsApiClient.getToken();
             vvsLog.setVvsToken(token);
 
-            // Call both VVS endpoints from VVS API
-            String mvPlateRaw = safeCall(() -> vvsApiClient.getByMvAndPlate(
-                    token, request.getMvFileNumber(), request.getPlateNumber()));
+            // Try MV+Plate first
+            VvsVehicleData vehicleData  = null;
+            String         usedEndpoint = null;
 
-            String engineChassisRaw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
-                    token, request.getEngineNumber(), request.getChassisNumber()));
+            String mvPlateRaw = tryGetByMvAndPlate(token, request, vvsLog);
+            if (mvPlateRaw != null) {
+                vehicleData  = vvsApiClient.parseVehicleData(mvPlateRaw);
+                usedEndpoint = "MV_PLATE";
+            }
 
-            vvsLog.setVvsMvPlateResponse(mvPlateRaw);
-            vvsLog.setVvsEngineChassisResponse(engineChassisRaw);
+            // Fall back to Engine+Chassis
+            if (vehicleData == null) {
+                String engineChassisRaw = tryGetByEngineAndChassis(token, request, vvsLog);
+                if (engineChassisRaw != null) {
+                    vehicleData  = vvsApiClient.parseVehicleData(engineChassisRaw);
+                    usedEndpoint = "ENGINE_CHASSIS";
+                }
+            }
 
-            VvsVehicleData mvPlateData       = vvsApiClient.parseVehicleData(mvPlateRaw);
-            VvsVehicleData engineChassisData = vvsApiClient.parseVehicleData(engineChassisRaw);
+            vvsLog.setMatchedFieldNames(usedEndpoint);
 
-            List<String> matched = evaluate(request, mvPlateData, engineChassisData);
-            vvsLog.setMatchedFields(matched.size());
-            vvsLog.setMatchedFieldNames(String.join(", ", matched));
-
-            if (matched.size() >= VERIFICATION_THRESHOLD) {
+            if (vehicleData != null) {
+                // Store the VVS request ID now so confirm() can use it later
+                vvsLog.setVvsRequestId(vehicleData.getRequestId());
 
                 record.setVerificationStatus(VerificationStatus.VERIFIED);
                 verificationRepo.save(record);
-
-                String vvsRequestId = extractRequestId(mvPlateData, engineChassisData);
-                vvsLog.setVvsRequestId(vvsRequestId);
-
-                LocalDate expiry = LocalDate.now().plusYears(1);
-                String confirmResp = vvsApiClient.confirmRequest(
-                        token, vvsRequestId, record.getReferenceNo(),
-                        expiry.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")));
-                vvsLog.setVvsConfirmResponse(confirmResp);
                 vvsLogRepo.save(vvsLog);
 
-                VerificationInsurance insurance = insuranceRepo
-                        .findByVerificationId(record.getId())
-                        .orElse(null);
-
-                String certNo = dciCertificateService.issue(
-                        record, mvPlateData, insurance, userId, expiry);
-
-                log.info("VERIFIED referenceNo={} certNo={}", record.getReferenceNo(), certNo);
+                log.info("VERIFIED referenceNo={} via {}", record.getReferenceNo(), usedEndpoint);
                 return VehicleVerificationResponse.verified(
-                        record.getReferenceNo(), matched.size(),
-                        vvsLog.getMatchedFieldNames(), certNo);
+                        record.getReferenceNo(),
+                        record.getId(),
+                        vehicleData);
 
             } else {
-                String reason = "Only " + matched.size() + " of 2 identifier pairs matched. Minimum: "
-                        + VERIFICATION_THRESHOLD;
+                String reason = "No matching vehicle record found in VVS for the provided identifiers.";
                 record.setVerificationStatus(VerificationStatus.FAILED);
                 record.setFailureReason(reason);
                 verificationRepo.save(record);
                 vvsLogRepo.save(vvsLog);
 
-                log.info("FAILED referenceNo={} matched={}", record.getReferenceNo(), matched.size());
-                return VehicleVerificationResponse.failed(
-                        record.getReferenceNo(), matched.size(),
-                        vvsLog.getMatchedFieldNames(), reason);
+                log.info("FAILED referenceNo={} — no VVS record returned", record.getReferenceNo());
+                return VehicleVerificationResponse.failed(record.getReferenceNo(), reason);
             }
 
         } catch (VvsApiClient.VvsApiException e) {
@@ -123,73 +111,74 @@ public class VerificationService {
         }
     }
 
-    private List<String> evaluate(VehicleVerificationRequest req,
-                                  VvsVehicleData mvPlate, VvsVehicleData engineChassis) {
-        List<String> matched = new ArrayList<>();
+    // -------------------------------------------------------------------------
+    // STEP 5-6 — Final Review submit: ConfirmRequest → generate certificate
+    // -------------------------------------------------------------------------
 
-        // MV and Plate must BOTH match to count
-        boolean mvMatch    = matches(req.getMvFileNumber(), mvPlate != null ? mvPlate.getMvFileNo() : null);
-        boolean plateMatch = matches(req.getPlateNumber(),  mvPlate != null ? mvPlate.getPlateNo()  : null);
-        if (mvMatch && plateMatch) {
-            matched.add("MV_FILE_NUMBER+PLATE_NUMBER");
+    @Transactional
+    public VehicleVerificationResponse confirm(Long verificationId, Long userId) {
+
+        VerificationRequest record = verificationRepo.findById(verificationId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Verification record not found: " + verificationId));
+
+        if (record.getVerificationStatus() != VerificationStatus.VERIFIED) {
+            throw new IllegalStateException(
+                    "Cannot confirm a record that is not VERIFIED. Current status: "
+                            + record.getVerificationStatus());
         }
 
-        // Engine and Chassis must BOTH match to count
-        boolean engineMatch  = matches(req.getEngineNumber(),  engineChassis != null ? engineChassis.getEngineNo()  : null);
-        boolean chassisMatch = matches(req.getChassisNumber(), engineChassis != null ? engineChassis.getChassisNo() : null);
-        if (engineMatch && chassisMatch) {
-            matched.add("ENGINE_NUMBER+CHASSIS_NUMBER");
-        }
+        VerificationVvsLog vvsLog = vvsLogRepo.findByVerificationId(verificationId)
+                .orElse(new VerificationVvsLog());
 
-        return matched;
-    }
-
-    private boolean matches(String submitted, String fromVvs) {
-        if (submitted == null || submitted.isBlank()) return false;
-        if (fromVvs   == null || fromVvs.isBlank())   return false;
-        return submitted.trim().equalsIgnoreCase(fromVvs.trim());
-    }
-
-    private VerificationRequest buildPendingRecord(VehicleVerificationRequest req, Long userId) {
-        VerificationRequest r = new VerificationRequest();
-        r.setReferenceNo(generateReferenceNo());
-        r.setMvFileNumber(req.getMvFileNumber());
-        r.setPlateNumber(req.getPlateNumber());
-        r.setChassisNumber(req.getChassisNumber());
-        r.setEngineNumber(req.getEngineNumber());
-        r.setRequestedBy(userId);
-        r.setVerificationStatus(VerificationStatus.PENDING);
-        return r;
-    }
-
-    private String generateReferenceNo() {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        return String.format("VVIP-%s-%06d", date, System.currentTimeMillis() % 1_000_000);
-    }
-
-    private String extractRequestId(VvsVehicleData mvPlate, VvsVehicleData engineChassis) {
-        if (mvPlate != null && mvPlate.getRequestId() != null) return mvPlate.getRequestId();
-        if (engineChassis != null && engineChassis.getRequestId() != null) return engineChassis.getRequestId();
-        return null;
-    }
-
-    private String safeCall(java.util.concurrent.Callable<String> call) {
         try {
-            return call.call();
-        } catch (VvsApiClient.VvsApiException e) {
-            String msg = e.getMessage();
-            // "No matching record" and "Invalid format" are expected responses if the API returns 400 bad request
-            if (msg.contains("No matching record") || msg.contains("Invalid format")) {
-                log.debug("VVS returned no data (expected): {}", msg);
-            } else {
-                log.warn("VVS partial call failed (continuing): {}", msg);
+            String token = vvsApiClient.getToken();
+
+            String vvsRequestId = vvsLog.getVvsRequestId();
+            if (vvsRequestId == null) {
+                vvsRequestId = refetchRequestId(token, record, vvsLog);
             }
-            return null;
+
+            LocalDate expiry    = LocalDate.now().plusYears(1);
+            String    expiryStr = expiry.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+
+            String confirmResp = vvsApiClient.confirmRequest(
+                    token, vvsRequestId, record.getReferenceNo(), expiryStr);
+            vvsLog.setVvsConfirmResponse(confirmResp);
+            vvsLogRepo.save(vvsLog);
+
+            VvsVehicleData vehicleData = resolveStoredVehicleData(vvsLog);
+
+            VerificationInsurance insurance = insuranceRepo
+                    .findByVerificationId(record.getId())
+                    .orElse(null);
+
+            String certNo = dciCertificateService.issue(
+                    record, vehicleData, insurance, userId, expiry);
+
+            record.setVerificationStatus(VerificationStatus.COMPLETED);
+            verificationRepo.save(record);
+
+            log.info("CONFIRMED referenceNo={} certNo={}", record.getReferenceNo(), certNo);
+            return VehicleVerificationResponse.confirmed(record.getReferenceNo(), certNo);
+
+        } catch (VvsApiClient.VvsApiException e) {
+            log.error("ConfirmRequest failed referenceNo={}: {}", record.getReferenceNo(), e.getMessage());
+            record.setFailureReason("Confirm error: " + e.getMessage());
+            verificationRepo.save(record);
+            return VehicleVerificationResponse.error(record.getReferenceNo(), e.getMessage());
+
         } catch (Exception e) {
-            log.warn("VVS partial call failed (continuing): {}", e.getMessage());
-            return null;
+            log.error("Unexpected confirm error referenceNo={}: {}", record.getReferenceNo(), e.getMessage());
+            record.setFailureReason("Internal confirm error: " + e.getMessage());
+            verificationRepo.save(record);
+            return VehicleVerificationResponse.error(record.getReferenceNo(), "Submission processing error");
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Utility: plain lookup — no record persisted, used for pre-fill / preview
+    // -------------------------------------------------------------------------
 
     public VvsLookupResponse lookup(VehicleVerificationRequest request) {
         try {
@@ -198,11 +187,14 @@ public class VerificationService {
             String mvPlateRaw = safeCall(() -> vvsApiClient.getByMvAndPlate(
                     token, request.getMvFileNumber(), request.getPlateNumber()));
 
-            String engineChassisRaw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
-                    token, request.getEngineNumber(), request.getChassisNumber()));
-
             VvsVehicleData data = vvsApiClient.parseVehicleData(mvPlateRaw);
-            if (data == null) data = vvsApiClient.parseVehicleData(engineChassisRaw);
+
+            if (data == null) {
+                String engineChassisRaw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
+                        token, request.getEngineNumber(), request.getChassisNumber()));
+                data = vvsApiClient.parseVehicleData(engineChassisRaw);
+            }
+
             if (data == null) return VvsLookupResponse.builder().found(false).build();
 
             return VvsLookupResponse.builder()
@@ -222,6 +214,88 @@ public class VerificationService {
         } catch (Exception e) {
             log.error("Lookup failed: {}", e.getMessage());
             return VvsLookupResponse.builder().found(false).build();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private String tryGetByMvAndPlate(String token,
+                                      VehicleVerificationRequest request,
+                                      VerificationVvsLog vvsLog) {
+        String raw = safeCall(() -> vvsApiClient.getByMvAndPlate(
+                token, request.getMvFileNumber(), request.getPlateNumber()));
+        vvsLog.setVvsMvPlateResponse(raw);
+        return raw;
+    }
+
+    private String tryGetByEngineAndChassis(String token,
+                                            VehicleVerificationRequest request,
+                                            VerificationVvsLog vvsLog) {
+        String raw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
+                token, request.getEngineNumber(), request.getChassisNumber()));
+        vvsLog.setVvsEngineChassisResponse(raw);
+        return raw;
+    }
+
+    private VvsVehicleData resolveStoredVehicleData(VerificationVvsLog vvsLog) {
+        VvsVehicleData data = vvsApiClient.parseVehicleData(vvsLog.getVvsMvPlateResponse());
+        if (data == null) {
+            data = vvsApiClient.parseVehicleData(vvsLog.getVvsEngineChassisResponse());
+        }
+        return data;
+    }
+
+    private String refetchRequestId(String token,
+                                    VerificationRequest record,
+                                    VerificationVvsLog vvsLog) {
+        String raw = safeCall(() -> vvsApiClient.getByMvAndPlate(
+                token, record.getMvFileNumber(), record.getPlateNumber()));
+        if (raw == null) {
+            raw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
+                    token, record.getEngineNumber(), record.getChassisNumber()));
+        }
+        VvsVehicleData data = vvsApiClient.parseVehicleData(raw);
+        if (data != null) {
+            vvsLog.setVvsRequestId(data.getRequestId());
+            vvsLogRepo.save(vvsLog);
+            return data.getRequestId();
+        }
+        return null;
+    }
+
+    private VerificationRequest buildPendingRecord(VehicleVerificationRequest req, Long userId) {
+        VerificationRequest r = new VerificationRequest();
+        r.setReferenceNo(generateReferenceNo());
+        r.setMvFileNumber(req.getMvFileNumber());
+        r.setPlateNumber(req.getPlateNumber());
+        r.setChassisNumber(req.getChassisNumber());
+        r.setEngineNumber(req.getEngineNumber());
+        r.setRequestedBy(userId);
+        r.setVerificationStatus(VerificationStatus.PENDING);
+        return r;
+    }
+
+    private String generateReferenceNo() {
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        return String.format("VVIP-%s-%06d", date, System.currentTimeMillis() % 1_000_000);
+    }
+
+    private String safeCall(java.util.concurrent.Callable<String> call) {
+        try {
+            return call.call();
+        } catch (VvsApiClient.VvsApiException e) {
+            String msg = e.getMessage();
+            if (msg.contains("No matching record") || msg.contains("Invalid format")) {
+                log.debug("VVS returned no data (expected): {}", msg);
+            } else {
+                log.warn("VVS call failed (continuing): {}", msg);
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("VVS call failed (continuing): {}", e.getMessage());
+            return null;
         }
     }
 }

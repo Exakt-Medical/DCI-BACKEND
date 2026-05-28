@@ -8,4 +8,5 @@ public class LoginResponse {
     private String username;
     private String role;
     private String message;
+    private Boolean allowedToBuyVoucher;
 }

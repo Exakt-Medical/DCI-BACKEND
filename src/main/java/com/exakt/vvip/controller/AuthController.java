@@ -3,13 +3,16 @@ package com.exakt.vvip.controller;
 import com.exakt.vvip.dto.LoginRequest;
 import com.exakt.vvip.dto.LoginResponse;
 import com.exakt.vvip.dto.RegisterRequest;
+import com.exakt.vvip.service.AccessLogService;
 import com.exakt.vvip.service.AuthService;
+import com.exakt.vvip.service.AuditTrailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,15 +25,35 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuditTrailService auditTrailService;
+    private final AccessLogService accessLogService;
 
     @PostMapping("/login")
     @Operation(summary = "Login with username and password", description = "Returns JWT token")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
-            return ResponseEntity.ok(authService.login(request));
+            LoginResponse response = authService.login(request);
+            // Log successful login into both audit trail and access trail
+            auditTrailService.logAction("Login", "User logged in successfully", request.getUsername(), response.getRole());
+            accessLogService.logLogin(request.getUsername());
+            return ResponseEntity.ok(response);
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout user", description = "Logs out the current user")
+    public ResponseEntity<?> logout(Authentication auth) {
+        if (auth != null) {
+            String username = auth.getName();
+            String role = auth.getAuthorities().stream()
+                    .findFirst()
+                    .map(g -> g.getAuthority().replace("ROLE_", ""))
+                    .orElse("UNKNOWN");
+            auditTrailService.logAction("Logout", "User logged out", username, role);
+        }
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

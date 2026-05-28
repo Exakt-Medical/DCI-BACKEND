@@ -94,6 +94,7 @@ public class UserManagementService {
                 .manager(manager)
                 .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
                 .mobile(request.getMobile())
+                // .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                 .isBuyVoucherAllowed(true)
                 .mfaCode("000")
                 .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
@@ -122,6 +123,8 @@ public class UserManagementService {
         String oldRole = user.getRole().name();
         String oldBranchName = user.getBranch() != null ? user.getBranch().getBranchName() : null;
         String oldManagerName = user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null;
+        Boolean oldAllowedToBuyVoucher = user.getIsBuyVoucherAllowed();
+
 
         Branch branch = null;
         if (request.getBranchId() != null) {
@@ -155,6 +158,7 @@ public class UserManagementService {
         user.setStatus(request.getStatus() != null ? request.getStatus() : user.getStatus());
         user.setMobile(request.getMobile());
         user.setUserstamp(currentUser);
+        //   user.setAllowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : user.getAllowedToBuyVoucher());
 
         user = userRepository.save(user);
         String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
@@ -187,6 +191,9 @@ public class UserManagementService {
         }
         if (request.getRole() != null && !request.getRole().isBlank() && !oldRole.equals(request.getRole().toUpperCase())) {
             changes.add("Role from '" + oldRole + "' to '" + request.getRole().toUpperCase() + "'");
+        }
+        if (request.getAllowedToBuyVoucher() != null && !request.getAllowedToBuyVoucher().equals(oldAllowedToBuyVoucher)) {
+            changes.add("Allowed to Buy Voucher from '" + oldAllowedToBuyVoucher + "' to '" + request.getAllowedToBuyVoucher() + "'");
         }
         String newBranchName = branch != null ? branch.getBranchName() : null;
         if ((oldBranchName == null && newBranchName != null) || (oldBranchName != null && !oldBranchName.equals(newBranchName))) {
@@ -251,6 +258,7 @@ public class UserManagementService {
                     .status("ACTIVE")
                     .mobile(request.getMobile())
                     .isBuyVoucherAllowed(true)
+                    //  .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                     .mfaCode("000")
                     .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                     .userstamp(currentUser)
@@ -286,6 +294,7 @@ public class UserManagementService {
                 .mfaCode(user.getMfaCode())
                 .mfaCodeExpiry(user.getMfaCodeExpiry())
                 .isBuyVoucherAllowed(user.getIsBuyVoucherAllowed())
+                // .allowedToBuyVoucher(user.getAllowedToBuyVoucher())
                 .userstamp(user.getUserstamp() != null ? user.getUserstamp().getUsername() : null)
                 .dateCreated(user.getDateCreated())
                 .build();

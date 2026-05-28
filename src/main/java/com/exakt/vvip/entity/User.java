@@ -76,6 +76,10 @@ public class User {
     @Builder.Default
     private Boolean isBuyVoucherAllowed = true;
 
+    // @Column(name = "is_buy_voucher_allowed")
+    // @Builder.Default
+    // private Boolean allowedToBuyVoucher = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userstamp")
     private User userstamp;
@@ -85,6 +89,6 @@ public class User {
     private String dateCreated = new java.text.SimpleDateFormat("MMM. dd, yyyy hh:mm a").format(new java.util.Date());
 
     public enum UserRole {
-        ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER, SUPPORT
+        ADMIN, MANAGER, AGENT, SUBAGENT, VIEWER, SUPPORT, LTO
     }
 }

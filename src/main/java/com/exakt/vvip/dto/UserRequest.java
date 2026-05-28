@@ -17,4 +17,5 @@ public class UserRequest {
     private Long managerId;
     private String status;
     private String mobile;
+    private Boolean allowedToBuyVoucher;
 }

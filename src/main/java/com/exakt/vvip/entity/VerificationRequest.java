@@ -3,6 +3,7 @@ package com.exakt.vvip.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -11,21 +12,29 @@ import java.time.LocalDateTime;
 @Table(name = "verification_requests")
 public class VerificationRequest {
 
-    public enum VerificationStatus { PENDING, VERIFIED, FAILED, ERROR }
+    /**
+     * PENDING   — record saved, VVS call not yet made
+     * VERIFIED  — VVS GetDetails returned a valid vehicle record
+     * FAILED    — VVS returned no matching record
+     * ERROR     — unexpected API or internal exception
+     * COMPLETED — ConfirmRequest succeeded and PDF certificate was issued
+     */
+    public enum VerificationStatus { PENDING, VERIFIED, FAILED, ERROR, COMPLETED }
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "reference_no", nullable = false, unique = true, length = 50)
     private String referenceNo;
 
-    @Column(name = "mv_file_number",  length = 50)
+    @Column(name = "mv_file_number", length = 50)
     private String mvFileNumber;
-    @Column(name = "plate_number",    length = 20)
+    @Column(name = "plate_number", length = 20)
     private String plateNumber;
-    @Column(name = "chassis_number",  length = 50)
+    @Column(name = "chassis_number", length = 50)
     private String chassisNumber;
-    @Column(name = "engine_number",   length = 50)
+    @Column(name = "engine_number", length = 50)
     private String engineNumber;
 
     @Enumerated(EnumType.STRING)
@@ -34,6 +43,7 @@ public class VerificationRequest {
 
     @Column(name = "failure_reason", length = 500)
     private String failureReason;
+
     @Column(name = "requested_by")
     private Long requestedBy;
 
@@ -42,6 +52,9 @@ public class VerificationRequest {
     @Column(name = "date_updated")
     private LocalDateTime dateUpdated;
 
-    @PrePersist  protected void onCreate() { dateCreated = LocalDateTime.now(); }
-    @PreUpdate   protected void onUpdate()  { dateUpdated = LocalDateTime.now(); }
+    @PrePersist
+    protected void onCreate() { dateCreated = LocalDateTime.now(); }
+
+    @PreUpdate
+    protected void onUpdate()  { dateUpdated = LocalDateTime.now(); }
 }
