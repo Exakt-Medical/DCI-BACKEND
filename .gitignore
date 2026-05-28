@@ -31,3 +31,4 @@ dist-ssr
 # Java / Spring Boot build files
 target/
 *.class
+/target/classes

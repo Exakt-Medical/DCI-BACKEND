@@ -109,6 +109,11 @@ public class DataInitializer implements CommandLineRunner {
             try { stmt.execute("ALTER TABLE audit_trail MODIFY COLUMN `action_made` varchar(500) DEFAULT NULL"); } catch (Exception ignored) {}
             // Fix mfa_code_expiry column type (was incorrectly set as datetime in MySQL)
             try { stmt.execute("ALTER TABLE users MODIFY COLUMN `mfa_code_expiry` varchar(50) DEFAULT ''"); } catch (Exception ignored) {}
+            // Convert all text columns to utf8mb4 to support special characters (ñ, etc.)
+            try { stmt.execute("ALTER TABLE companies CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE branches CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE audit_trail CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
 
         } catch (Exception ignored) {}
     }
