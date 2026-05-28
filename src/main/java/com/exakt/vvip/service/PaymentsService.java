@@ -1,8 +1,14 @@
 package com.exakt.vvip.service;
 
 import com.exakt.vvip.config.TlpeApiProperties;
+import com.exakt.vvip.dto.AddPaymentRequest;
+import com.exakt.vvip.dto.AddPaymentResponse;
 import com.exakt.vvip.dto.PaymentsRequest;
 import com.exakt.vvip.dto.PaymentsResponse;
+import com.exakt.vvip.entity.Payments;
+import com.exakt.vvip.entity.Purchase;
+import com.exakt.vvip.repository.PaymentsRepository;
+import com.exakt.vvip.repository.PurchaseRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLDecoder;
@@ -26,13 +33,47 @@ public class PaymentsService {
     private final RestTemplate restTemplate;
     private final TlpeApiProperties props;
     private final ObjectMapper objectMapper;
+    private final PaymentsRepository paymentsRepository;
+    private final PurchaseRepository purchaseRepository;
 
     public PaymentsService(@Qualifier("tlpeRestTemplate") RestTemplate restTemplate,
                            TlpeApiProperties props,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           PaymentsRepository paymentsRepository,
+                           PurchaseRepository purchaseRepository) {
         this.restTemplate = restTemplate;
         this.props = props;
         this.objectMapper = objectMapper;
+        this.paymentsRepository = paymentsRepository;
+        this.purchaseRepository = purchaseRepository;
+    }
+
+    @Transactional
+    public AddPaymentResponse addPayment(AddPaymentRequest request) {
+        log.info("Adding payment for transactionId: {}, merchantRefId: {}", request.getTransactionId(), request.getMerchantRefId());
+
+        Purchase purchase = null;
+        if (request.getPurchaseId() != null) {
+            purchase = purchaseRepository.findById(request.getPurchaseId())
+                    .orElseThrow(() -> new PaymentException("Purchase not found with id: " + request.getPurchaseId()));
+        }
+
+        Payments payment = Payments.builder()
+                .transactionId(request.getTransactionId())
+                .merchantRefId(request.getMerchantRefId())
+                .status(request.getPaymentStatus())
+                .purchase(purchase)
+                .build();
+
+        Payments savedPayment = paymentsRepository.save(payment);
+
+        return AddPaymentResponse.builder()
+                .transactionId(savedPayment.getTransactionId())
+                .merchantRefId(savedPayment.getMerchantRefId())
+                .paymentStatus(savedPayment.getStatus())
+                .purchaseId(savedPayment.getPurchase() != null ? savedPayment.getPurchase().getId() : null)
+                .message("Payment added successfully")
+                .build();
     }
 
     public PaymentsResponse createPaymentLink(PaymentsRequest request) {

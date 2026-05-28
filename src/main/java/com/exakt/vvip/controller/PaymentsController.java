@@ -1,5 +1,7 @@
 package com.exakt.vvip.controller;
 
+import com.exakt.vvip.dto.AddPaymentRequest;
+import com.exakt.vvip.dto.AddPaymentResponse;
 import com.exakt.vvip.dto.PaymentsRequest;
 import com.exakt.vvip.dto.PaymentsResponse;
 import com.exakt.vvip.service.PaymentsService;
@@ -16,10 +18,23 @@ import java.util.Map;
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "Bearer Authentication")
-@Tag(name = "Payments", description = "TLPE payment link generation")
+@Tag(name = "Payments", description = "TLPE payment link generation and storage")
 public class PaymentsController {
 
     private final PaymentsService paymentsService;
+
+    @PostMapping("/add")
+    @Operation(summary = "Add payment data to database")
+    public ResponseEntity<?> addPayment(@RequestBody AddPaymentRequest request) {
+        try {
+            AddPaymentResponse response = paymentsService.addPayment(request);
+            return ResponseEntity.ok(response);
+        } catch (PaymentsService.PaymentException e) {
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to add payment: " + e.getMessage()));
+        }
+    }
 
     @PostMapping("/tlpe")
     @Operation(summary = "Create TLPE payment link")

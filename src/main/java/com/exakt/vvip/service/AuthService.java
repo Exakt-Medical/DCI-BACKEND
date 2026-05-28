@@ -36,6 +36,9 @@ public class AuthService {
 
         return LoginResponse.builder()
                 .token(token)
+                .email(user.getEmail())
+                .firstname(user.getFirstName())
+                .lastname(user.getLastName())
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .allowedToBuyVoucher(user.getIsBuyVoucherAllowed())
