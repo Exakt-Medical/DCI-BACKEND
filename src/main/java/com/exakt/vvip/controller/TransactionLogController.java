@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -24,6 +25,7 @@ public class TransactionLogController {
 
     // GET endpoint for frontend to fetch transaction logs
     @GetMapping("/transaction-logs")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'LTO', 'PROCESSOR')")  // ADD THIS LINE
     public ResponseEntity<Map<String, Object>> getTransactionLogs(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,

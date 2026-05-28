@@ -66,8 +66,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/webhook-to-external").permitAll()  // ADD THIS - Webhook doesn't need auth
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT")
+                        .requestMatchers("/api/transaction-logs/**").hasAnyRole("ADMIN", "MANAGER", "LTO", "PROCESSOR")  // ADD THIS LINE
                         .requestMatchers("/api/v1/vvip/**").authenticated()
                         .anyRequest().authenticated()
                 )

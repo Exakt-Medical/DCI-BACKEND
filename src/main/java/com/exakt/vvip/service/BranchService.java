@@ -63,7 +63,7 @@ public class BranchService {
                 .build();
 
         branch = branchRepository.save(branch);
-        auditTrailService.logAction("Added a New Branch " + branch.getBranchName() + " for " + company.getCompanyName(), "Created branch '" + branch.getBranchName() + "' for " + company.getCompanyName(), username, user.getRole().name());
+        auditTrailService.logAction("Add Branch", "Added branch: " + branch.getBranchName() + " for " + company.getCompanyName(), username, user.getRole().name());
         return toResponse(branch);
     }
 
@@ -95,7 +95,7 @@ public class BranchService {
             return toResponse(branch);
         }
         if ("ACTIVE".equals(request.getStatus()) && "INACTIVE".equals(oldStatus)) {
-            auditTrailService.logAction("Activated Branch " + branch.getBranchName(), "Set Branch " + branch.getBranchName() + " to active", username, user.getRole().name());
+            auditTrailService.logAction("Activate Branch", "Activated branch: " + branch.getBranchName(), username, user.getRole().name());
             return toResponse(branch);
         }
         List<String> changes = new ArrayList<>();
@@ -125,7 +125,7 @@ public class BranchService {
         Branch branch = branchRepository.findById(id).orElse(null);
         branchRepository.deleteById(id);
         if (branch != null) {
-            auditTrailService.logAction("Deleted Branch " + branch.getBranchName(), "Deleted branch '" + branch.getBranchName() + "'", "system", "SYSTEM");
+            auditTrailService.logAction("Delete Branch", "Deleted branch: " + branch.getBranchName(), "system", "SYSTEM");
         }
     }
 
@@ -153,7 +153,7 @@ public class BranchService {
                     .build();
             return branchRepository.save(branch);
         }).map(this::toResponse).collect(Collectors.toList());
-        auditTrailService.logAction("Bulk Added " + responses.size() + " Branches", "Bulk created " + responses.size() + " branches", username, user.getRole().name());
+        auditTrailService.logAction("Bulk Add Branches", "Bulk added " + responses.size() + " branches", username, user.getRole().name());
         return responses;
     }
 

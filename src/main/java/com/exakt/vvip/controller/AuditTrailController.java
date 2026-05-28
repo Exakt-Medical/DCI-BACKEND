@@ -36,6 +36,18 @@ public class AuditTrailController {
         return ResponseEntity.ok(record);
     }
 
+    @GetMapping("/actions")
+    @Operation(summary = "Get unique action types for filtering")
+    public ResponseEntity<List<String>> getUniqueActions() {
+        return ResponseEntity.ok(auditTrailService.getUniqueActions());
+    }
+
+    @GetMapping("/users")
+    @Operation(summary = "Get unique users for filtering")
+    public ResponseEntity<List<String>> getUniqueUsers() {
+        return ResponseEntity.ok(auditTrailService.getUniqueUsers());
+    }
+
     @PostMapping("")
     @Operation(summary = "Create a new audit trail record")
     public ResponseEntity<?> create(@RequestBody AuditTrailRequest request, Authentication auth) {

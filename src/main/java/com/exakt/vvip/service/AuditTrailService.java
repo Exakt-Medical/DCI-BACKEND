@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AuditTrailService {
 
-
-
     private final AuditTrailRepository auditTrailRepository;
 
     public List<AuditTrailResponse> getAll() {
@@ -76,6 +74,14 @@ public class AuditTrailService {
         auditTrailRepository.deleteById(id);
     }
 
+    public List<String> getUniqueActions() {
+        return auditTrailRepository.findDistinctActionMades();
+    }
+
+    public List<String> getUniqueUsers() {
+        return auditTrailRepository.findDistinctUserstamps();
+    }
+
     private AuditTrailResponse toResponse(AuditTrail auditTrail) {
         return AuditTrailResponse.builder()
                 .id(auditTrail.getId())
@@ -88,11 +94,3 @@ public class AuditTrailService {
                 .build();
     }
 }
-
-
-
-
-
-
-
-
