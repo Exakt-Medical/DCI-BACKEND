@@ -69,7 +69,8 @@ public class SecurityConfig {
                         .requestMatchers("/webhook-to-external").permitAll()  // ADD THIS - Webhook doesn't need auth
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT")
-                        .requestMatchers("/api/transaction-logs/**").hasAnyRole("ADMIN", "MANAGER", "LTO", "PROCESSOR")  // ADD THIS LINE
+                        .requestMatchers("/api/transaction-logs/**").hasAnyRole("ADMIN", "MANAGER", "LTO", "PROCESSOR")
+                        .requestMatchers("/api/profile/**").hasAnyRole("ADMIN", "MANAGER", "AGENT", "LTO", "PROCESSOR")
                         .requestMatchers("/api/v1/vvip/**").authenticated()
                         .anyRequest().authenticated()
                 )

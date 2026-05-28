@@ -299,4 +299,11 @@ public class UserManagementService {
                 .dateCreated(user.getDateCreated())
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public UserResponse getByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        return toResponse(user);
+    }
 }
