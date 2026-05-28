@@ -94,8 +94,7 @@ public class UserManagementService {
                 .manager(manager)
                 .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
                 .mobile(request.getMobile())
-                // .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
-                .isBuyVoucherAllowed(true)
+                .isBuyVoucherAllowed(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                 .mfaCode("000")
                 .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                 .userstamp(currentUser)
@@ -158,7 +157,7 @@ public class UserManagementService {
         user.setStatus(request.getStatus() != null ? request.getStatus() : user.getStatus());
         user.setMobile(request.getMobile());
         user.setUserstamp(currentUser);
-        //   user.setAllowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : user.getAllowedToBuyVoucher());
+        user.setIsBuyVoucherAllowed(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : user.getIsBuyVoucherAllowed());
 
         user = userRepository.save(user);
         String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
@@ -257,8 +256,7 @@ public class UserManagementService {
                     .manager(manager)
                     .status("ACTIVE")
                     .mobile(request.getMobile())
-                    .isBuyVoucherAllowed(true)
-                    //  .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
+                    .isBuyVoucherAllowed(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                     .mfaCode("000")
                     .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                     .userstamp(currentUser)
