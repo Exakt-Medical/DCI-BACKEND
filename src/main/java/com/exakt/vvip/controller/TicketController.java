@@ -19,7 +19,7 @@ import java.util.List;
 @Tag(name = "Support Ticket", description = "Support Ticket Management Endpoints")
 public class TicketController {
 
-    private final TicketService ticketService;  // CHANGE: Use TicketService instead of TicketRepository
+    private final TicketService ticketService;
 
     @GetMapping
     @Operation(summary = "Get all support tickets")

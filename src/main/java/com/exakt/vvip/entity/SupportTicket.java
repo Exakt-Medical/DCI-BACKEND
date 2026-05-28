@@ -81,8 +81,12 @@ public class SupportTicket {
     @Column(length = 300)
     private String address;
 
-    @Column(name = "cr_attachment", length = 255)
-    private String certificateOfRegistration;
+//    @Column(name = "cr_attachment", length = 255)
+//    private String certificateOfRegistration;
+
+    @Lob
+    @Column(name = "cr_attachment")
+    private String crAttachment;
 
     @Column(name = "plate_certification_attachment", length = 255)
     private String plateCertification;
