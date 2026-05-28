@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
+
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
@@ -26,7 +28,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid username or password");
         }
 
-        if (Boolean.FALSE.equals(user.getIsactive())) {
+        if (!"ACTIVE".equals(user.getStatus())) {
             throw new BadCredentialsException("Account is deactivated");
         }
 

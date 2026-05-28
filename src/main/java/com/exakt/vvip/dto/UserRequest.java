@@ -15,6 +15,6 @@ public class UserRequest {
     private String role;
     private Long branchId;
     private Long managerId;
-    private Boolean isactive;
-    private Boolean isSubAgent;
+    private String status;
+    private String mobile;
 }
