@@ -40,6 +40,7 @@ public class AuthService {
                 .role(user.getRole().name())
                 .allowedToBuyVoucher(user.getIsBuyVoucherAllowed())
                 .message("Login successful")
+                .allowedToBuyVoucher(user.getIsBuyVoucherAllowed())
                 .build();
     }
 
