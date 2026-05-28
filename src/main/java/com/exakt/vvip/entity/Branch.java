@@ -19,7 +19,7 @@ public class Branch {
     private String branchName;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
+    @JoinColumn(name = "company_id", referencedColumnName = "code", nullable = false)
     private Company company;
 
     @Column(name = "status", length = 20)

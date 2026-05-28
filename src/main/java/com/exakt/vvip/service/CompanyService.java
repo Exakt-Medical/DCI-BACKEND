@@ -42,9 +42,10 @@ public class CompanyService {
 
         User user = userRepository.findByUsername(username).orElse(null);
 
+        String code = request.getCode() != null && !request.getCode().isBlank() ? request.getCode() : "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8);
         Company company = Company.builder()
                 .companyName(request.getCompanyName())
-                .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                .code(code)
                 .provider(request.getProvider())
                 .approvalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : "PENDING")
                 .status(request.getStatus())
@@ -119,10 +120,12 @@ public class CompanyService {
         User user = userRepository.findByUsername(username).orElse(null);
         List<CompanyResponse> responses = requests.stream().map(request -> {
             if (request.getStatus() == null) request.setStatus("ACTIVE");
+            String code = request.getCode() != null && !request.getCode().isBlank() ? request.getCode() : "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8);
             Company company = Company.builder()
                     .companyName(request.getCompanyName())
-                    .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                    .code(code)
                     .provider(request.getProvider())
+                    .address(request.getAddress())
                     .approvalStatus("APPROVED")
                     .status(request.getStatus())
                     .userstamp(user)
