@@ -50,6 +50,7 @@ public class CommentsController {
         return ResponseEntity.ok(commentsService.update(id, request));
     }
 
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete comments")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

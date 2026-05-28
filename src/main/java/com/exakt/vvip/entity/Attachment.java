@@ -3,8 +3,10 @@ package com.exakt.vvip.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "attachment")
+@Table(name = "support_ticket")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,12 +21,27 @@ public class Attachment {
     @Column(name = "reference_number", length = 100)
     private String referenceNumber;
 
-    @Column(name = "cr_attachment", length = 255)
-    private String crAttachment;
+    @Column(name = "requested_by", length = 100)
+    private String requestedBy;
 
-    @Column(name = "plate_certification_attachment", length = 255)
-    private String plateCertificationAttachment;
+    @Column(length = 50)
+    private String status;
 
-    @Column(name = "actual_plate_attachment", length = 255)
-    private String actualPlateAttachment;
+    @Column(name = "date_updated")
+    private LocalDateTime dateUpdated;
+
+    @Column(name = "date_requested")
+    private LocalDateTime dateRequested;
+
+    @Lob
+    @Column(name = "cr_attachment")
+    private byte[] crAttachment;
+
+    @Lob
+    @Column(name = "plate_certification_attachment")
+    private byte[] plateCertificationAttachment;
+
+    @Lob
+    @Column(name = "actual_plate_attachment")
+    private byte[] actualPlateAttachment;
 }

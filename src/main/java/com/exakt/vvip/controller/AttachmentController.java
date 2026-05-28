@@ -9,7 +9,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -57,5 +59,26 @@ public class AttachmentController {
         attachmentService.delete(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/upload", consumes = "multipart/form-data")
+    @Operation(summary = "Upload attachment file")
+    public ResponseEntity<Attachment> uploadAttachment(
+            @RequestParam String referenceNumber,
+            @RequestParam String requestedBy,
+            @RequestParam(required = false) MultipartFile crAttachment,
+            @RequestParam(required = false) MultipartFile plateCertificationAttachment,
+            @RequestParam(required = false) MultipartFile actualPlateAttachment
+    ) throws IOException {
+
+        return ResponseEntity.ok(
+                attachmentService.uploadAttachment(
+                        referenceNumber,
+                        requestedBy,
+                        crAttachment,
+                        plateCertificationAttachment,
+                        actualPlateAttachment
+                )
+        );
     }
 }
