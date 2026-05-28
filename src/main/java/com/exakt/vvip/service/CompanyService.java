@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompanyService {
 
+
+
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
     private final AuditTrailService auditTrailService;

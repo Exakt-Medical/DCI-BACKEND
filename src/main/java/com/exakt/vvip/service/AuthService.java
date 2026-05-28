@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
+
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
@@ -36,6 +38,7 @@ public class AuthService {
                 .token(token)
                 .username(user.getUsername())
                 .role(user.getRole().name())
+//                .allowedToBuyVoucher(user.getAllowedToBuyVoucher())
                 .message("Login successful")
                 .build();
     }

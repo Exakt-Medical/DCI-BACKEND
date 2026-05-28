@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AuditTrailService {
 
+
+
     private final AuditTrailRepository auditTrailRepository;
 
     public List<AuditTrailResponse> getAll() {

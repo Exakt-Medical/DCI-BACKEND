@@ -27,6 +27,7 @@ public class UserResponse {
     private String mfaCode;
     private String mfaCodeExpiry;
     private Boolean isBuyVoucherAllowed;
+    // private Boolean allowedToBuyVoucher;
     private String userstamp;
     private String dateCreated;
 }
