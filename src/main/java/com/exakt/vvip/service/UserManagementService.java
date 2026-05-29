@@ -94,8 +94,7 @@ public class UserManagementService {
                 .manager(manager)
                 .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
                 .mobile(request.getMobile())
-                // .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
-                .isBuyVoucherAllowed(true)
+                .isBuyVoucherAllowed(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                 .mfaCode("000")
                 .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                 .userstamp(currentUser)
@@ -104,7 +103,7 @@ public class UserManagementService {
         user = userRepository.save(user);
         String displayName = (request.getFirstName() + " " + request.getLastName()).trim() + " (" + request.getUsername() + ")";
         String roleName = request.getRole() != null ? request.getRole() : "AGENT";
-        auditTrailService.logAction("Added a New Account " + displayName + " as " + roleName, "Created user " + displayName + " as " + roleName, username, currentUser.getRole().name());
+        auditTrailService.logAction("Add Account", "Added account: " + displayName + " as " + roleName, username, currentUser.getRole().name());
         return toResponse(user);
     }
 
@@ -158,7 +157,7 @@ public class UserManagementService {
         user.setStatus(request.getStatus() != null ? request.getStatus() : user.getStatus());
         user.setMobile(request.getMobile());
         user.setUserstamp(currentUser);
-        //   user.setAllowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : user.getAllowedToBuyVoucher());
+        user.setIsBuyVoucherAllowed(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : user.getIsBuyVoucherAllowed());
 
         user = userRepository.save(user);
         String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
@@ -166,11 +165,11 @@ public class UserManagementService {
         String newStatus = request.getStatus();
         String oldStatus = user.getStatus();
         if ("INACTIVE".equals(newStatus) && "ACTIVE".equals(oldStatus)) {
-            auditTrailService.logAction("Deactivated Account " + displayName, "Set Account " + displayName + " to inactive", username, currentUser.getRole().name());
+            auditTrailService.logAction("Deactivate Account", "Deactivated account: " + displayName, username, currentUser.getRole().name());
             return toResponse(user);
         }
         if ("ACTIVE".equals(newStatus) && "INACTIVE".equals(oldStatus)) {
-            auditTrailService.logAction("Activated Account " + displayName, "Set Account " + displayName + " to active", username, currentUser.getRole().name());
+            auditTrailService.logAction("Activate Account", "Activated account: " + displayName, username, currentUser.getRole().name());
             return toResponse(user);
         }
         List<String> changes = new ArrayList<>();
@@ -205,11 +204,11 @@ public class UserManagementService {
         }
         String actionMade, details;
         if (changes.isEmpty()) {
-            actionMade = "Edited Account " + displayName;
-            details = "No changes detected";
+            actionMade = "Edit Account";
+            details = "No changes detected for account: " + displayName;
         } else {
-            actionMade = "Edited Account " + displayName + " (" + String.join("; ", changes) + ")";
-            details = String.join("; ", changes);
+            actionMade = "Edit Account";
+            details = "Updated account: " + displayName + " - " + String.join("; ", changes);
         }
         auditTrailService.logAction(actionMade, details, username, currentUser.getRole().name());
         return toResponse(user);
@@ -221,7 +220,7 @@ public class UserManagementService {
         userRepository.deleteById(id);
         if (user != null) {
             String displayName = (user.getFirstName() + " " + user.getLastName()).trim() + " (" + user.getUsername() + ")";
-            auditTrailService.logAction("Deleted Account " + displayName, "Deleted user " + displayName, "system", "SYSTEM");
+            auditTrailService.logAction("Delete Account", "Deleted account: " + displayName, "system", "SYSTEM");
         }
     }
 
@@ -257,15 +256,14 @@ public class UserManagementService {
                     .manager(manager)
                     .status("ACTIVE")
                     .mobile(request.getMobile())
-                    .isBuyVoucherAllowed(true)
-                    //  .allowedToBuyVoucher(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
+                    .isBuyVoucherAllowed(request.getAllowedToBuyVoucher() != null ? request.getAllowedToBuyVoucher() : false)
                     .mfaCode("000")
                     .mfaCodeExpiry(new java.text.SimpleDateFormat("MMdd'9999'").format(new java.util.Date()))
                     .userstamp(currentUser)
                     .build();
             return userRepository.save(user);
         }).map(this::toResponse).collect(Collectors.toList());
-        auditTrailService.logAction("Bulk Added " + responses.size() + " Accounts", "Bulk created " + responses.size() + " users", username, currentUser.getRole().name());
+        auditTrailService.logAction("Bulk Add Accounts", "Bulk added " + responses.size() + " accounts", username, currentUser.getRole().name());
         return responses;
     }
 
@@ -298,5 +296,12 @@ public class UserManagementService {
                 .userstamp(user.getUserstamp() != null ? user.getUserstamp().getUsername() : null)
                 .dateCreated(user.getDateCreated())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        return toResponse(user);
     }
 }

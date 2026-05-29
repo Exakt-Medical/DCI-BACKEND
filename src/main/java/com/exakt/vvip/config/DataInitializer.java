@@ -17,9 +17,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class    DataInitializer implements CommandLineRunner {
-
-
+public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -98,6 +96,24 @@ public class    DataInitializer implements CommandLineRunner {
             try { stmt.execute("ALTER TABLE companies ADD COLUMN `address` varchar(1000) DEFAULT NULL"); } catch (Exception ignored) {}
             // COMPANIES: add provider column
             try { stmt.execute("ALTER TABLE companies ADD COLUMN `provider` varchar(200) DEFAULT NULL"); } catch (Exception ignored) {}
+            // BRANCHES: change company_id from BIGINT to VARCHAR(100) to reference companies.code
+            try { stmt.execute("ALTER TABLE branches MODIFY COLUMN `company_id` varchar(100) DEFAULT NULL"); } catch (Exception ignored) {}
+            // Fix orphan branch company_id values: map old numeric IDs to company codes
+            try { stmt.execute("UPDATE branches b INNER JOIN companies c ON c.id = CAST(b.company_id AS UNSIGNED) SET b.company_id = c.code"); } catch (Exception ignored) {}
+            // Delete branches whose company_id still doesn't match any company code
+            try { stmt.execute("DELETE b FROM branches b LEFT JOIN companies c ON c.code = b.company_id WHERE c.code IS NULL AND b.company_id IS NOT NULL AND b.company_id != ''"); } catch (Exception ignored) {}
+            // Fix invalid user roles: map non-standard roles to existing enum values
+            try { stmt.execute("UPDATE users SET role = 'AGENT' WHERE role NOT IN ('ADMIN','MANAGER','AGENT','SUBAGENT','VIEWER','SUPPORT')"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE users SET role = 'SUBAGENT' WHERE role = 'SUB_AGENT'"); } catch (Exception ignored) {}
+            // Increase audit_trail action_made column size
+            try { stmt.execute("ALTER TABLE audit_trail MODIFY COLUMN `action_made` varchar(500) DEFAULT NULL"); } catch (Exception ignored) {}
+            // Fix mfa_code_expiry column type (was incorrectly set as datetime in MySQL)
+            try { stmt.execute("ALTER TABLE users MODIFY COLUMN `mfa_code_expiry` varchar(50) DEFAULT ''"); } catch (Exception ignored) {}
+            // Convert all text columns to utf8mb4 to support special characters (ñ, etc.)
+            try { stmt.execute("ALTER TABLE companies CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE branches CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE audit_trail CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Exception ignored) {}
 
         } catch (Exception ignored) {}
     }

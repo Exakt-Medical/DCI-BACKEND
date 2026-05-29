@@ -2,7 +2,7 @@ package com.exakt.vvip.controller;
 
 import com.exakt.vvip.dto.TicketRequest;
 import com.exakt.vvip.entity.SupportTicket;
-import com.exakt.vvip.repository.TicketRepository;
+import com.exakt.vvip.service.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,119 +19,50 @@ import java.util.List;
 @Tag(name = "Support Ticket", description = "Support Ticket Management Endpoints")
 public class TicketController {
 
-
-
-    private final TicketRepository ticketRepository;
+    private final TicketService ticketService;
 
     @GetMapping
     @Operation(summary = "Get all support tickets")
     public ResponseEntity<List<SupportTicket>> getAllSupportTickets() {
-
-        return ResponseEntity.ok(ticketRepository.findAll());
+        return ResponseEntity.ok(ticketService.getAll());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get support ticket by ID")
-    public ResponseEntity<SupportTicket> getSupportTicketById(
-            @PathVariable Long id) {
-
-        return ticketRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<SupportTicket> getSupportTicketById(@PathVariable Long id) {
+        SupportTicket ticket = ticketService.getById(id);
+        return ticket != null ? ResponseEntity.ok(ticket) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
     @Operation(summary = "Create support ticket")
-    public ResponseEntity<SupportTicket> createSupportTicket(
-            @RequestBody TicketRequest request) {
-
-        SupportTicket ticket = SupportTicket.builder()
-                .referenceNumber(request.getReferenceNumber())
-                .status(request.getStatus())
-                .requestedBy(request.getRequestedBy())
-                .type(request.getType())
-                .processedBy(request.getProcessedBy())
-                .dateUpdated(request.getDateUpdated())
-                .dateRequested(request.getDateRequested())
-                .escalated(request.getEscalated())
-                .roleBased(request.getRoleBased())
-
-                .mvFileNo(request.getMvFileNo())
-                .plateNo(request.getPlateNo())
-                .engineNo(request.getEngineNo())
-                .chassisNo(request.getChassisNo())
-                .make(request.getMake())
-                .series(request.getSeries())
-                .vehicleColor(request.getVehicleColor())
-                .vehicleTypeDenomination(request.getVehicleTypeDenomination())
-                .yearModel(request.getYearModel())
-                .classification(request.getClassification())
-                .name(request.getName())
-                .address(request.getAddress())
-
-               // .certificateOfRegistration(request.getCertificateOfRegistration())
-                .plateCertification(request.getPlateCertification())
-                .actualPlate(request.getActualPlate())
-                .crAttachment(request.getCrAttachment())
-                .build();
-
-        return ResponseEntity.ok(ticketRepository.save(ticket));
+    public ResponseEntity<SupportTicket> createSupportTicket(@RequestBody TicketRequest request) {
+        return ResponseEntity.ok(ticketService.create(request));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update support ticket")
-    public ResponseEntity<SupportTicket> updateSupportTicket(
-            @PathVariable Long id,
-            @RequestBody TicketRequest request) {
-
-        return ticketRepository.findById(id)
-                .map(ticket -> {
-
-                    ticket.setReferenceNumber(request.getReferenceNumber());
-                    ticket.setStatus(request.getStatus());
-                    ticket.setRequestedBy(request.getRequestedBy());
-                    ticket.setType(request.getType());
-                    ticket.setProcessedBy(request.getProcessedBy());
-                    ticket.setDateUpdated(request.getDateUpdated());
-                    ticket.setDateRequested(request.getDateRequested());
-                    ticket.setEscalated(request.getEscalated());
-                    ticket.setRoleBased(request.getRoleBased());
-
-                    ticket.setMvFileNo(request.getMvFileNo());
-                    ticket.setPlateNo(request.getPlateNo());
-                    ticket.setEngineNo(request.getEngineNo());
-                    ticket.setChassisNo(request.getChassisNo());
-                    ticket.setMake(request.getMake());
-                    ticket.setSeries(request.getSeries());
-                    ticket.setVehicleColor(request.getVehicleColor());
-                    ticket.setVehicleTypeDenomination(request.getVehicleTypeDenomination());
-                    ticket.setYearModel(request.getYearModel());
-                    ticket.setClassification(request.getClassification());
-                    ticket.setName(request.getName());
-                    ticket.setAddress(request.getAddress());
-
-                   // ticket.setCertificateOfRegistration(request.getCertificateOfRegistration());
-                    ticket.setPlateCertification(request.getPlateCertification());
-                    ticket.setActualPlate(request.getActualPlate());
-                    ticket.setCrAttachment(request.getCrAttachment());
-
-
-                    return ResponseEntity.ok(ticketRepository.save(ticket));
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<SupportTicket> updateSupportTicket(@PathVariable Long id, @RequestBody TicketRequest request) {
+        SupportTicket updated = ticketService.update(id, request);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete support ticket")
-    public ResponseEntity<Void> deleteSupportTicket(
-            @PathVariable Long id) {
-
-        if (!ticketRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        ticketRepository.deleteById(id);
-
+    public ResponseEntity<Void> deleteSupportTicket(@PathVariable Long id) {
+        ticketService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Change ticket status only")
+    public ResponseEntity<SupportTicket> changeTicketStatus(@PathVariable Long id, @RequestParam String status) {
+        return ResponseEntity.ok(ticketService.changeStatus(id, status));
+    }
+
+    @PatchMapping("/{id}/escalate")
+    @Operation(summary = "Escalate ticket to LTO or other department")
+    public ResponseEntity<SupportTicket> escalateTicket(@PathVariable Long id, @RequestParam String escalateTo) {
+        return ResponseEntity.ok(ticketService.escalateTicket(id, escalateTo));
     }
 }

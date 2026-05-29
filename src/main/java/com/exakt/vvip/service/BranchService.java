@@ -20,8 +20,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BranchService {
 
-
-
     private final BranchRepository branchRepository;
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
@@ -52,8 +50,9 @@ public class BranchService {
     public BranchResponse create(BranchRequest request, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Company company = companyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found"));
+        String companyCode = request.getCompanyCode() != null ? request.getCompanyCode() : String.valueOf(request.getCompanyId());
+        Company company = companyRepository.findByCode(companyCode)
+                .orElseThrow(() -> new RuntimeException("Company not found for code: " + companyCode));
 
         Branch branch = Branch.builder()
                 .branchId(request.getBranchId())
@@ -64,7 +63,7 @@ public class BranchService {
                 .build();
 
         branch = branchRepository.save(branch);
-        auditTrailService.logAction("Added a New Branch " + branch.getBranchName() + " for " + company.getCompanyName(), "Created branch '" + branch.getBranchName() + "' for " + company.getCompanyName(), username, user.getRole().name());
+        auditTrailService.logAction("Add Branch", "Added branch: " + branch.getBranchName() + " for " + company.getCompanyName(), username, user.getRole().name());
         return toResponse(branch);
     }
 
@@ -74,8 +73,9 @@ public class BranchService {
                 .orElseThrow(() -> new RuntimeException("Branch not found"));
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Company company = companyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found"));
+        String companyCode = request.getCompanyCode() != null ? request.getCompanyCode() : String.valueOf(request.getCompanyId());
+        Company company = companyRepository.findByCode(companyCode)
+                .orElseThrow(() -> new RuntimeException("Company not found for code: " + companyCode));
 
         String oldBranchId = branch.getBranchId();
         String oldName = branch.getBranchName();
@@ -95,7 +95,7 @@ public class BranchService {
             return toResponse(branch);
         }
         if ("ACTIVE".equals(request.getStatus()) && "INACTIVE".equals(oldStatus)) {
-            auditTrailService.logAction("Activated Branch " + branch.getBranchName(), "Set Branch " + branch.getBranchName() + " to active", username, user.getRole().name());
+            auditTrailService.logAction("Activate Branch", "Activated branch: " + branch.getBranchName(), username, user.getRole().name());
             return toResponse(branch);
         }
         List<String> changes = new ArrayList<>();
@@ -125,7 +125,7 @@ public class BranchService {
         Branch branch = branchRepository.findById(id).orElse(null);
         branchRepository.deleteById(id);
         if (branch != null) {
-            auditTrailService.logAction("Deleted Branch " + branch.getBranchName(), "Deleted branch '" + branch.getBranchName() + "'", "system", "SYSTEM");
+            auditTrailService.logAction("Delete Branch", "Deleted branch: " + branch.getBranchName(), "system", "SYSTEM");
         }
     }
 
@@ -153,18 +153,20 @@ public class BranchService {
                     .build();
             return branchRepository.save(branch);
         }).map(this::toResponse).collect(Collectors.toList());
-        auditTrailService.logAction("Bulk Added " + responses.size() + " Branches", "Bulk created " + responses.size() + " branches", username, user.getRole().name());
+        auditTrailService.logAction("Bulk Add Branches", "Bulk added " + responses.size() + " branches", username, user.getRole().name());
         return responses;
     }
 
     private BranchResponse toResponse(Branch branch) {
+        Company c = branch.getCompany();
         return BranchResponse.builder()
                 .id(branch.getId())
                 .branchId(branch.getBranchId())
                 .branchName(branch.getBranchName())
-                .companyId(branch.getCompany().getId())
-                .companyName(branch.getCompany().getCompanyName())
-                .companyProvider(branch.getCompany().getProvider())
+                .companyId(c != null ? c.getId() : null)
+                .companyCode(c != null ? c.getCode() : null)
+                .companyName(c != null ? c.getCompanyName() : null)
+                .companyProvider(c != null ? c.getProvider() : null)
                 .status(branch.getStatus())
                 .userstamp(branch.getUserstamp() != null ? branch.getUserstamp().getUsername() : null)
                 .dateCreated(branch.getDateCreated())

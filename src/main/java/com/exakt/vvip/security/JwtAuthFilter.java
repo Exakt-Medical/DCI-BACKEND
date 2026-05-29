@@ -28,17 +28,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
 
-        // Skip authentication for swagger docs
+        // Skip authentication for swagger docs and webhook ONLY
         if (path.startsWith("/swagger-ui") || path.startsWith("/api-docs") || path.startsWith("/v3/api-docs")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ADD THIS - Skip authentication for transaction logs and webhook
-        if (path.startsWith("/api/transaction-logs") || path.equals("/api/webhook/voucher-redeem")) {
+        // Skip authentication for webhook (no auth needed)
+        if (path.equals("/webhook-to-external")) {
             filterChain.doFilter(request, response);
             return;
         }
+
+        // REMOVE the skip for transaction logs - let SecurityConfig handle it
+        // REMOVE: if (path.startsWith("/api/transaction-logs")) { ... }
 
         String token = parseJwt(request);
         if (token != null && jwtUtils.validateToken(token)) {

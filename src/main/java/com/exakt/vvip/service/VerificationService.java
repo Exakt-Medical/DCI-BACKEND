@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -116,7 +117,7 @@ public class VerificationService {
     // -------------------------------------------------------------------------
 
     @Transactional
-    public VehicleVerificationResponse confirm(Long verificationId, Long userId) {
+    public VehicleVerificationResponse confirm(Long verificationId, VehicleVerificationRequest request, Long userId) {
 
         VerificationRequest record = verificationRepo.findById(verificationId)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -127,6 +128,9 @@ public class VerificationService {
                     "Cannot confirm a record that is not VERIFIED. Current status: "
                             + record.getVerificationStatus());
         }
+
+        // Save insurance data from the final review form
+        saveInsurance(verificationId, request);
 
         VerificationVvsLog vvsLog = vvsLogRepo.findByVerificationId(verificationId)
                 .orElse(new VerificationVvsLog());
@@ -146,6 +150,10 @@ public class VerificationService {
                     token, vvsRequestId, record.getReferenceNo(), expiryStr);
             vvsLog.setVvsConfirmResponse(confirmResp);
             vvsLogRepo.save(vvsLog);
+
+            if (confirmResp == null || confirmResp.contains("No matching record")) {
+                throw new VvsApiClient.VvsApiException("VVS ConfirmRequest rejected: " + confirmResp);
+            }
 
             VvsVehicleData vehicleData = resolveStoredVehicleData(vvsLog);
 
@@ -176,44 +184,68 @@ public class VerificationService {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Utility: plain lookup — no record persisted, used for pre-fill / preview
-    // -------------------------------------------------------------------------
+//    public VvsLookupResponse lookup(VehicleVerificationRequest request) {
+//        try {
+//            String token = vvsApiClient.getToken();
+//
+//            String mvPlateRaw = safeCall(() -> vvsApiClient.getByMvAndPlate(
+//                    token, request.getMvFileNumber(), request.getPlateNumber()));
+//
+//            VvsVehicleData data = vvsApiClient.parseVehicleData(mvPlateRaw);
+//
+//            if (data == null) {
+//                String engineChassisRaw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
+//                        token, request.getEngineNumber(), request.getChassisNumber()));
+//                data = vvsApiClient.parseVehicleData(engineChassisRaw);
+//            }
+//
+//            if (data == null) return VvsLookupResponse.builder().found(false).build();
+//
+//            return VvsLookupResponse.builder()
+//                    .found(true)
+//                    .mvFileNumber(data.getMvFileNo())
+//                    .plateNumber(data.getPlateNo())
+//                    .engineNumber(data.getEngineNo())
+//                    .chassisNumber(data.getChassisNo())
+//                    .make(data.getMake())
+//                    .series(data.getSeries())
+//                    .color(data.getColor())
+//                    .yearModel(data.getYearModel())
+//                    .bodyType(data.getBodyType())
+//                    .ownerFullName(data.getFullOwnerName())
+//                    .build();
+//
+//        } catch (Exception e) {
+//            log.error("Lookup failed: {}", e.getMessage());
+//            return VvsLookupResponse.builder().found(false).build();
+//        }
+//    }
 
-    public VvsLookupResponse lookup(VehicleVerificationRequest request) {
+    private void saveInsurance(Long verificationId, VehicleVerificationRequest request) {
+        VerificationInsurance ins = insuranceRepo.findByVerificationId(verificationId)
+                .orElse(new VerificationInsurance());
+
+        ins.setVerificationId(verificationId);
+        ins.setInsuranceCode(request.getInsuranceCode());
+        ins.setPolicyNumber(request.getPolicyNumber());
+        ins.setPremiumType(request.getPremiumType());
+        ins.setVoucherCode(request.getVoucherCode());
+
+        ins.setPrescribedPremiumFee(parseBigDecimal(request.getPrescribedPremiumFee()));
+        ins.setDst(parseBigDecimal(request.getDst()));
+        ins.setVat(parseBigDecimal(request.getVat()));
+        ins.setLgt(parseBigDecimal(request.getLgt()));
+        ins.setValidationFee(parseBigDecimal(request.getValidationFee()));
+        ins.setTotalAmount(parseBigDecimal(request.getTotalAmount()));
+
+        insuranceRepo.save(ins);
+    }
+
+    private BigDecimal parseBigDecimal(String value) {
         try {
-            String token = vvsApiClient.getToken();
-
-            String mvPlateRaw = safeCall(() -> vvsApiClient.getByMvAndPlate(
-                    token, request.getMvFileNumber(), request.getPlateNumber()));
-
-            VvsVehicleData data = vvsApiClient.parseVehicleData(mvPlateRaw);
-
-            if (data == null) {
-                String engineChassisRaw = safeCall(() -> vvsApiClient.getByEngineAndChassis(
-                        token, request.getEngineNumber(), request.getChassisNumber()));
-                data = vvsApiClient.parseVehicleData(engineChassisRaw);
-            }
-
-            if (data == null) return VvsLookupResponse.builder().found(false).build();
-
-            return VvsLookupResponse.builder()
-                    .found(true)
-                    .mvFileNumber(data.getMvFileNo())
-                    .plateNumber(data.getPlateNo())
-                    .engineNumber(data.getEngineNo())
-                    .chassisNumber(data.getChassisNo())
-                    .make(data.getMake())
-                    .series(data.getSeries())
-                    .color(data.getColor())
-                    .yearModel(data.getYearModel())
-                    .bodyType(data.getBodyType())
-                    .ownerFullName(data.getFullOwnerName())
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Lookup failed: {}", e.getMessage());
-            return VvsLookupResponse.builder().found(false).build();
+            return (value != null && !value.isBlank()) ? new BigDecimal(value) : null;
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

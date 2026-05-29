@@ -18,8 +18,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompanyService {
 
-
-
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
     private final AuditTrailService auditTrailService;
@@ -44,9 +42,10 @@ public class CompanyService {
 
         User user = userRepository.findByUsername(username).orElse(null);
 
+        String code = request.getCode() != null && !request.getCode().isBlank() ? request.getCode() : "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8);
         Company company = Company.builder()
                 .companyName(request.getCompanyName())
-                .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                .code(code)
                 .provider(request.getProvider())
                 .approvalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus() : "PENDING")
                 .status(request.getStatus())
@@ -55,8 +54,7 @@ public class CompanyService {
                 .build();
 
         company = companyRepository.save(company);
-        auditTrailService.logAction("Added a New Company " + company.getCompanyName(), "Created company '" + company.getCompanyName() + "'", username, user != null ? user.getRole().name() : "SYSTEM");
-        return toResponse(company);
+        auditTrailService.logAction("Add Company", "Added company: " + company.getCompanyName(), username, user != null ? user.getRole().name() : "SYSTEM");        return toResponse(company);
     }
 
     @Transactional
@@ -81,11 +79,11 @@ public class CompanyService {
         company = companyRepository.save(company);
 
         if ("INACTIVE".equals(request.getStatus()) && "ACTIVE".equals(oldStatus)) {
-            auditTrailService.logAction("Deactivated Company " + company.getCompanyName(), "Set Company " + company.getCompanyName() + " to inactive", username, user.getRole().name());
+            auditTrailService.logAction("Deactivate Company", "Deactivated company: " + company.getCompanyName(), username, user.getRole().name());
             return toResponse(company);
         }
         if ("ACTIVE".equals(request.getStatus()) && "INACTIVE".equals(oldStatus)) {
-            auditTrailService.logAction("Activated Company " + company.getCompanyName(), "Set Company " + company.getCompanyName() + " to active", username, user.getRole().name());
+            auditTrailService.logAction("Activate Company", "Activated company: " + company.getCompanyName(), username, user.getRole().name());
             return toResponse(company);
         }
         List<String> changes = new ArrayList<>();
@@ -112,7 +110,7 @@ public class CompanyService {
         Company company = companyRepository.findById(id).orElse(null);
         companyRepository.deleteById(id);
         if (company != null) {
-            auditTrailService.logAction("Deleted Company " + company.getCompanyName(), "Deleted company '" + company.getCompanyName() + "'", "system", "SYSTEM");
+            auditTrailService.logAction("Delete Company", "Deleted company: " + company.getCompanyName(), "system", "SYSTEM");
         }
     }
 
@@ -121,17 +119,19 @@ public class CompanyService {
         User user = userRepository.findByUsername(username).orElse(null);
         List<CompanyResponse> responses = requests.stream().map(request -> {
             if (request.getStatus() == null) request.setStatus("ACTIVE");
+            String code = request.getCode() != null && !request.getCode().isBlank() ? request.getCode() : "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8);
             Company company = Company.builder()
                     .companyName(request.getCompanyName())
-                    .code("CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8))
+                    .code(code)
                     .provider(request.getProvider())
+                    .address(request.getAddress())
                     .approvalStatus("APPROVED")
                     .status(request.getStatus())
                     .userstamp(user)
                     .build();
             return companyRepository.save(company);
         }).map(this::toResponse).collect(Collectors.toList());
-        auditTrailService.logAction("Bulk Added " + responses.size() + " Companies", "Bulk created " + responses.size() + " companies", username, user != null ? user.getRole().name() : "SYSTEM");
+        auditTrailService.logAction("Bulk Add Companies", "Bulk added " + responses.size() + " companies", username, user != null ? user.getRole().name() : "SYSTEM");
         return responses;
     }
 

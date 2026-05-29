@@ -74,7 +74,7 @@ public class User {
 
     @Column(name = "is_buy_voucher_allowed")
     @Builder.Default
-    private Boolean isBuyVoucherAllowed = true;
+    private Boolean isBuyVoucherAllowed = false;
 
     // @Column(name = "is_buy_voucher_allowed")
     // @Builder.Default

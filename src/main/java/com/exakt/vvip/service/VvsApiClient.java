@@ -64,12 +64,7 @@ public class VvsApiClient {
 
     public String confirmRequest(String token, String requestId, String vvipRef, String expiryDate) {
         String url = props.getBaseUrl() + "/ConfirmRequest";
-        try {
-            return post(url, buildEntity(token, new VvsConfirmRequest(requestId, vvipRef, expiryDate)));
-        } catch (Exception e) {
-            log.warn("VVS ConfirmRequest failed (non-blocking): {}", e.getMessage());
-            return null;
-        }
+        return post(url, buildEntity(token, new VvsConfirmRequest(requestId, vvipRef, expiryDate)));
     }
 
     public VvsVehicleData parseVehicleData(String rawJson) {

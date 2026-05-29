@@ -26,13 +26,6 @@ public class VvipController {
     private final VerificationService   verificationService;
     private final DciCertificateService dciCertificateService;
 
-    /**
-     * STEP 1 — User submits identifiers.
-     * Calls VVS GetDetails (MV+Plate first, Engine+Chassis fallback).
-     * Saves a VerificationRequest record and returns verificationId + vehicle details.
-     *
-     * POST /api/v1/vvip/verify
-     */
     @PostMapping("/verify")
     @Operation(summary = "Submit vehicle identifiers for VVS verification")
     public ResponseEntity<VehicleVerificationResponse> verify(
@@ -43,36 +36,24 @@ public class VvipController {
         return toResponseEntity(result);
     }
 
-    /**
-     * STEP 2 — User passed voucher/insurance validation and submits Final Review.
-     * Calls VVS ConfirmRequest then generates the PDF certificate.
-     * Only allowed when the record is in VERIFIED status.
-     *
-     * POST /api/v1/vvip/{verificationId}/confirm
-     */
     @PostMapping("/{verificationId}/confirm")
     @Operation(summary = "Submit Final Review — calls ConfirmRequest and issues certificate")
     public ResponseEntity<VehicleVerificationResponse> confirm(
             @PathVariable Long verificationId,
+            @RequestBody VehicleVerificationRequest request,
             @AuthenticationPrincipal UserDetails principal) {
 
-        VehicleVerificationResponse result = verificationService.confirm(verificationId, resolveUserId(principal));
+        VehicleVerificationResponse result = verificationService.confirm(verificationId, request, resolveUserId(principal));
         return toResponseEntity(result);
     }
 
-    /**
-     * OPTIONAL — Preview vehicle data from VVS without saving anything.
-     * Useful for pre-filling the form before the user starts a real verification.
-     *
-     * POST /api/v1/vvip/lookup
-     */
-    @PostMapping("/lookup")
-    @Operation(summary = "Preview vehicle data from VVS — no record saved, cannot be confirmed")
-    public ResponseEntity<VvsLookupResponse> lookup(
-            @Valid @RequestBody VehicleVerificationRequest request) {
-
-        return ResponseEntity.ok(verificationService.lookup(request));
-    }
+//    @PostMapping("/lookup")
+//    @Operation(summary = "Preview vehicle data from VVS — no record saved, cannot be confirmed")
+//    public ResponseEntity<VvsLookupResponse> lookup(
+//            @Valid @RequestBody VehicleVerificationRequest request) {
+//
+//        return ResponseEntity.ok(verificationService.lookup(request));
+//    }
 
     // -------------------------------------------------------------------------
 
