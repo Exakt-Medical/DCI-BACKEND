@@ -50,6 +50,12 @@ public class DciCertificate {
     private Long issuedBy;
     @Column(name = "company_code", length = 100)
     private String companyCode;
+    @Column(name = "premium_type", length = 100)
+    private String premiumType;
+    @Column(name = "issuer_name",  length = 200)
+    private String issuerName;
+    @Column(name = "company_name", length = 200)
+    private String companyName;
 
     @Column(name = "date_created", nullable = false)
     private LocalDateTime dateCreated;
