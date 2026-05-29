@@ -69,6 +69,14 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/webhook-to-external").permitAll()  // ADD THIS - Webhook doesn't need auth
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/branches/**").permitAll()
+                        .requestMatchers("/api/users/**").permitAll()
+                        // FIXED: Change from permitAll() to authenticated() for attachment uploads
+                        .requestMatchers("/api/attachment/upload").authenticated()  // Require authentication for upload
+                        .requestMatchers("/api/attachment/**").authenticated()       // Require authentication for all attachment endpoints
+                        .requestMatchers("/api/attachment/*/image/*").permitAll() // Explicitly allow image endpoints
+                        .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT", "LTO")
+                        .requestMatchers("/api/support-ticket/**").hasAnyRole("ADMIN", "MANAGER", "LTO")
                         .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT")
                         .requestMatchers("/api/transaction-logs/**").hasAnyRole("ADMIN", "MANAGER", "LTO", "PROCESSOR")
                         .requestMatchers("/api/profile/**").hasAnyRole("ADMIN", "MANAGER", "AGENT", "LTO", "PROCESSOR")

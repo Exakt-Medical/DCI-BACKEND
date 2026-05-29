@@ -5,7 +5,9 @@ import com.exakt.vvip.entity.Attachment;
 import com.exakt.vvip.repository.AttachmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -23,7 +25,6 @@ public class AttachmentService {
     }
 
     public Attachment create(AttachmentRequest request) {
-
         Attachment attachment = Attachment.builder()
                 .referenceNumber(request.getReferenceNumber())
                 .crAttachment(request.getCrAttachment())
@@ -35,7 +36,6 @@ public class AttachmentService {
     }
 
     public Attachment update(Long id, AttachmentRequest request) {
-
         Attachment attachment = attachmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Attachment not found"));
 
@@ -50,4 +50,31 @@ public class AttachmentService {
     public void delete(Long id) {
         attachmentRepository.deleteById(id);
     }
+
+    public Attachment uploadAttachment(
+            String referenceNumber,
+            String requestedBy,  // Parameter kept for API compatibility but not stored
+            MultipartFile crAttachment,
+            MultipartFile plateCertificationAttachment,
+            MultipartFile actualPlateAttachment
+    ) throws IOException {
+
+        Attachment attachment = Attachment.builder()
+                .referenceNumber(referenceNumber)
+                .crAttachment(getBytes(crAttachment))
+                .plateCertificationAttachment(getBytes(plateCertificationAttachment))
+                .actualPlateAttachment(getBytes(actualPlateAttachment))
+                .build();
+
+        return attachmentRepository.save(attachment);
+    }
+
+    private byte[] getBytes(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+        return file.getBytes();
+    }
+
+
 }

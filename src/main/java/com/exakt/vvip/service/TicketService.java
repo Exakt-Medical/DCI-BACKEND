@@ -81,9 +81,10 @@ public class TicketService {
                 .classification(request.getClassification())
                 .name(request.getName())
                 .address(request.getAddress())
-                .certificateOfRegistration(request.getCertificateOfRegistration())
+               // .certificateOfRegistration(request.getCertificateOfRegistration())
                 .plateCertification(request.getPlateCertification())
                 .actualPlate(request.getActualPlate())
+                .crAttachment(request.getCrAttachment())
                 .build();
 
         SupportTicket savedTicket = ticketRepository.save(ticket);
@@ -124,10 +125,10 @@ public class TicketService {
         existingTicket.setClassification(request.getClassification());
         existingTicket.setName(request.getName());
         existingTicket.setAddress(request.getAddress());
-        existingTicket.setCertificateOfRegistration(request.getCertificateOfRegistration());
+       // existingTicket.setCertificateOfRegistration(request.getCertificateOfRegistration());
         existingTicket.setPlateCertification(request.getPlateCertification());
         existingTicket.setActualPlate(request.getActualPlate());
-
+        existingTicket.setCrAttachment(request.getCrAttachment());  // ← ADD THIS
         SupportTicket updatedTicket = ticketRepository.save(existingTicket);
 
         // Build log details based on what changed

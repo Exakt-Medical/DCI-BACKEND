@@ -10,7 +10,12 @@ import lombok.*;
 public class AttachmentRequest {
 
     private String referenceNumber;
-    private String crAttachment;
-    private String plateCertificationAttachment;
-    private String actualPlateAttachment;
+
+    private String requestedBy;
+
+    private byte[] crAttachment;
+
+    private byte[] plateCertificationAttachment;
+
+    private byte[] actualPlateAttachment;
 }
