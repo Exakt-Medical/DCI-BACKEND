@@ -80,9 +80,13 @@ public class SupportTicket {
 
     @Column(length = 300)
     private String address;
+
+//    @Column(name = "certificate_of_registration", length = 255)
+//    private String certificateOfRegistration;
+
     @Lob
-  @Column(name = "cr_attachment", length = 255)
-private String certificateOfRegistration;
+    @Column(name = "cr_attachment", columnDefinition = "TEXT")
+    private String crAttachment;
 
  
 
