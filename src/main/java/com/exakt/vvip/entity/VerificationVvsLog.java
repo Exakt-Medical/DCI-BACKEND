@@ -20,8 +20,6 @@ public class VerificationVvsLog {
 
     @Column(name = "vvs_request_id",  length = 50)
     private String vvsRequestId;
-    @Column(name = "vvs_token",       columnDefinition = "TEXT")
-    private String vvsToken;
 
     @Column(name = "vvs_mv_plate_response",       columnDefinition = "MEDIUMTEXT")
     private String vvsMvPlateResponse;
@@ -32,8 +30,6 @@ public class VerificationVvsLog {
     @Column(name = "vvs_confirm_response",        length = 500)
     private String vvsConfirmResponse;
 
-    @Column(name = "matched_fields")
-    private Integer matchedFields = 0;
     @Column(name = "matched_field_names", length = 200)
     private String matchedFieldNames;
 

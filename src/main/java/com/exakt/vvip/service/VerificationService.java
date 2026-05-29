@@ -39,8 +39,7 @@ public class VerificationService {
 
         try {
             String token = vvsApiClient.getToken();
-            vvsLog.setVvsToken(token);
-
+            
             VvsVehicleData vehicleData  = null;
             String         usedEndpoint = null;
 
@@ -138,7 +137,7 @@ public class VerificationService {
             VvsVehicleData vehicleData = resolveStoredVehicleData(vvsLog);
 
             String certNo = dciCertificateService.issue(
-                    record, vehicleData, request.getPremiumType(), userId, expiry);
+                    record, request.getPremiumType(), userId, expiry);
 
             record.setVerificationStatus(VerificationStatus.COMPLETED);
             verificationRepo.save(record);

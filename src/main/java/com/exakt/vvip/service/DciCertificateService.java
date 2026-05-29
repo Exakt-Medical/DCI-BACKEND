@@ -3,7 +3,6 @@ package com.exakt.vvip.service;
 import com.exakt.vvip.dto.VvsVehicleData;
 import com.exakt.vvip.entity.DciCertificate;
 import com.exakt.vvip.entity.User;
-import com.exakt.vvip.entity.VerificationInsurance;
 import com.exakt.vvip.entity.VerificationRequest;
 import com.exakt.vvip.repository.DciCertificateRepository;
 import com.exakt.vvip.repository.UserRepository;
@@ -24,7 +23,7 @@ public class DciCertificateService {
     private final DciCertificateRepository certRepo;
     private final UserRepository userRepo;
 
-    public String issue(VerificationRequest record, VvsVehicleData vehicleData,
+    public String issue(VerificationRequest record,
                         String premiumType, Long issuedBy, LocalDate expiryDate) {
 
         String certNo      = generateCertNo();
@@ -46,18 +45,12 @@ public class DciCertificateService {
         DciCertificate cert = new DciCertificate();
         cert.setCertificateNo(certNo);
         cert.setVerificationId(record.getId());
-        cert.setMvFileNumber(record.getMvFileNumber());
-        cert.setPlateNumber(record.getPlateNumber());
-        cert.setChassisNumber(record.getChassisNumber());
-        cert.setEngineNumber(record.getEngineNumber());
-        cert.setOwnerName(vehicleData != null ? vehicleData.getFullOwnerName() : null);
         cert.setIssuedDate(LocalDate.now());
         cert.setExpiryDate(expiryDate);
         cert.setIssuedBy(issuedBy);
         cert.setIssuerName(issuerName);
         cert.setCompanyName(companyName);
         cert.setPremiumType(premiumType);
-        cert.setPdfFilePath(null);
         certRepo.save(cert);
 
         log.info("DCI certificate record saved: {}", certNo);
