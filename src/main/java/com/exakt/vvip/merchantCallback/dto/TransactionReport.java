@@ -24,6 +24,7 @@ public class TransactionReport {
     private String merchantReference;
     private String paymentReference;
     private String companyCode;
+    private String companyName;
     private Integer voucherCount;
     private BigDecimal voucherFee;
     private String statusCode;
@@ -31,4 +32,8 @@ public class TransactionReport {
     private String message;
     private String rawError;
     private JsonNode rawResponse;
+    private String firstName;
+    private String lastName;
+    private String contactMobile;
+    private String email;
 }

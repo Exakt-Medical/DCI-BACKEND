@@ -3,11 +3,9 @@ package com.exakt.vvip.merchantCallback.config;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
 @Getter
 @Setter
-@Configuration
 @ConfigurationProperties(prefix = "merchant-callback")
 public class MerchantCallbackProperties {
 
@@ -15,6 +13,11 @@ public class MerchantCallbackProperties {
     private String integratorToken;
     private String billeroApiBaseUrl;
     private String billeroToken;
+    private String webhookSigningSecret;
+    private String expectedIssuer = "TLPE";
+    private String expectedSubject = "TLPE Notification Authentication";
+    private String expectedAudience = "TLPE Notification";
+    private long allowedClockSkewSeconds = 60;
     private Http http = new Http();
 
     @Getter
