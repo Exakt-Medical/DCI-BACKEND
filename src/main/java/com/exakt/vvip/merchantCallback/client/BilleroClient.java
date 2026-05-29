@@ -3,6 +3,8 @@ package com.exakt.vvip.merchantCallback.client;
 import com.exakt.vvip.merchantCallback.config.MerchantCallbackProperties;
 import com.exakt.vvip.merchantCallback.dto.BilleroConfirmRequest;
 import com.exakt.vvip.merchantCallback.dto.BilleroConfirmResult;
+import com.exakt.vvip.merchantCallback.dto.BilleroPurchaseRequest;
+import com.exakt.vvip.merchantCallback.dto.BilleroPurchaseResult;
 import com.exakt.vvip.merchantCallback.exception.MerchantCallbackException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 public class BilleroClient {
 
     private static final String CONFIRM_PAYMENT_PATH = "/voucher/confirm-payment";
+    private static final String PURCHASE_REQUEST_PATH = "/voucher/purchase-request";
 
     private final RestTemplate restTemplate;
     private final MerchantCallbackProperties properties;
@@ -40,7 +43,7 @@ public class BilleroClient {
     public BilleroConfirmResult confirmPayment(BilleroConfirmRequest request) {
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    buildConfirmUrl(),
+                    buildUrl(CONFIRM_PAYMENT_PATH),
                     HttpMethod.POST,
                     new HttpEntity<>(request, createHeaders(properties.getBilleroToken())),
                     String.class);
@@ -59,7 +62,25 @@ public class BilleroClient {
         }
     }
 
-    private String buildConfirmUrl() {
+    public BilleroPurchaseResult createPurchaseRequest(BilleroPurchaseRequest request) {
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    buildUrl(PURCHASE_REQUEST_PATH),
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, createHeaders(properties.getBilleroToken())),
+                    String.class);
+
+            return buildPurchaseResult(response.getBody(), response.getStatusCode().value());
+        } catch (HttpStatusCodeException exception) {
+            throw new MerchantCallbackException(resolveStatus(exception),
+                    "billero_purchase_request_failed",
+                    "Failed to create purchase request with Billero",
+                    exception.getResponseBodyAsString(),
+                    exception);
+        }
+    }
+
+    private String buildUrl(String path) {
         String baseUrl = trimTrailingSlash(properties.getBilleroApiBaseUrl());
         if (!StringUtils.hasText(baseUrl)) {
             throw new MerchantCallbackException(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
@@ -67,11 +88,11 @@ public class BilleroClient {
                     "Billero API base URL is not configured");
         }
 
-        if (baseUrl.endsWith(CONFIRM_PAYMENT_PATH)) {
+        if (baseUrl.endsWith(path)) {
             return baseUrl;
         }
 
-        return baseUrl + CONFIRM_PAYMENT_PATH;
+        return baseUrl + path;
     }
 
     private HttpHeaders createHeaders(String token) {
@@ -107,6 +128,35 @@ public class BilleroClient {
             return BilleroConfirmResult.builder()
                     .success((statusCode >= 200 && statusCode < 300) || alreadyProcessed)
                     .voucherAlreadyProcessed(alreadyProcessed)
+                    .statusCode(statusCode)
+                    .rawError(body)
+                    .build();
+        }
+    }
+
+    private BilleroPurchaseResult buildPurchaseResult(String body, int statusCode) {
+        try {
+            JsonNode root = StringUtils.hasText(body) ? objectMapper.readTree(body) : null;
+            JsonNode data = root != null ? root.path("data") : null;
+            
+            String code = text(data, "code");
+            String message = text(data, "message");
+            String reference = text(data, "reference");
+            String merchantReference = text(data, "merchantReference");
+            String rootMessage = text(root, "message");
+
+            return BilleroPurchaseResult.builder()
+                    .success(statusCode >= 200 && statusCode < 300)
+                    .statusCode(statusCode)
+                    .code(code)
+                    .message(message != null ? message : rootMessage)
+                    .reference(reference)
+                    .merchantReference(merchantReference)
+                    .rawResponse(root)
+                    .build();
+        } catch (Exception exception) {
+            return BilleroPurchaseResult.builder()
+                    .success(statusCode >= 200 && statusCode < 300)
                     .statusCode(statusCode)
                     .rawError(body)
                     .build();
