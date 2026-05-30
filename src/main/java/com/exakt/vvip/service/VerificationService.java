@@ -1,6 +1,5 @@
 package com.exakt.vvip.service;
 
-import com.exakt.vvip.dto.VvsLookupResponse;
 import com.exakt.vvip.dto.VvsVehicleData;
 import com.exakt.vvip.dto.VehicleVerificationRequest;
 import com.exakt.vvip.dto.VehicleVerificationResponse;
@@ -12,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -21,15 +19,29 @@ import java.time.format.DateTimeFormatter;
 @RequiredArgsConstructor
 public class VerificationService {
 
-    private final VerificationRequestRepository        verificationRepo;
-    private final VerificationVvsLogRepository         vvsLogRepo;
+    private final VerificationRequestRepository verificationRepo;
+    private final VerificationVvsLogRepository vvsLogRepo;
     private final VerificationVehicleDetailsRepository vehicleDetailsRepo;
-    private final VerificationOwnerDetailsRepository   ownerDetailsRepo;
-    private final VvsApiClient                         vvsApiClient;
-    private final DciCertificateService                dciCertificateService;
+    private final VerificationOwnerDetailsRepository ownerDetailsRepo;
+    private final VvsApiClient vvsApiClient;
+    private final DciCertificateService dciCertificateService;
+    private final DciCertificateRepository dciCertificateRepo;
 
     @Transactional
     public VehicleVerificationResponse verify(VehicleVerificationRequest request, Long userId) {
+
+        // CHECK FOR EXISTING CERTIFICATE FIRST
+        if (request.getPlateNumber() != null && hasExistingCertificate(request.getPlateNumber())) {
+            String reason = "THIS VEHICLE HAS ALREADY BEEN VERIFIED AND HAS AN EXISTING CERTIFICATE.";
+
+            VerificationRequest record = buildPendingRecord(request, userId);
+            record.setVerificationStatus(VerificationStatus.FAILED);
+            record.setFailureReason(reason);
+            verificationRepo.save(record);
+
+            log.info("FAILED referenceNo={} — vehicle already has certificate", record.getReferenceNo());
+            return VehicleVerificationResponse.failed(record.getReferenceNo(), reason);
+        }
 
         VerificationRequest record = buildPendingRecord(request, userId);
         verificationRepo.save(record);
@@ -39,20 +51,20 @@ public class VerificationService {
 
         try {
             String token = vvsApiClient.getToken();
-            
-            VvsVehicleData vehicleData  = null;
-            String         usedEndpoint = null;
+
+            VvsVehicleData vehicleData = null;
+            String usedEndpoint = null;
 
             String mvPlateRaw = tryGetByMvAndPlate(token, request, vvsLog);
             if (mvPlateRaw != null) {
-                vehicleData  = vvsApiClient.parseVehicleData(mvPlateRaw);
+                vehicleData = vvsApiClient.parseVehicleData(mvPlateRaw);
                 usedEndpoint = "MV_PLATE";
             }
 
             if (vehicleData == null) {
                 String engineChassisRaw = tryGetByEngineAndChassis(token, request, vvsLog);
                 if (engineChassisRaw != null) {
-                    vehicleData  = vvsApiClient.parseVehicleData(engineChassisRaw);
+                    vehicleData = vvsApiClient.parseVehicleData(engineChassisRaw);
                     usedEndpoint = "ENGINE_CHASSIS";
                 }
             }
@@ -123,8 +135,8 @@ public class VerificationService {
                 vvsRequestId = refetchRequestId(token, record, vvsLog);
             }
 
-            LocalDate expiry    = LocalDate.now().plusYears(1);
-            String    expiryStr = expiry.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+            LocalDate expiry = LocalDate.now().plusYears(1);
+            String expiryStr = expiry.format(DateTimeFormatter.ofPattern("MM/dd/yyyy"));
 
             String confirmResp = vvsApiClient.confirmRequest(token, vvsRequestId, record.getReferenceNo(), expiryStr);
             vvsLog.setVvsConfirmResponse(confirmResp);
@@ -157,6 +169,10 @@ public class VerificationService {
             verificationRepo.save(record);
             return VehicleVerificationResponse.error(record.getReferenceNo(), "Submission processing error");
         }
+    }
+
+    private boolean hasExistingCertificate(String plateNumber) {
+        return verificationRepo.findByPlateNumberAndVerificationStatus(plateNumber, VerificationStatus.COMPLETED).isPresent();
     }
 
     private void saveVehicleDetails(Long verificationId, VvsVehicleData v) {
