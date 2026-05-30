@@ -26,6 +26,7 @@ public class VerificationService {
     private final VerificationVehicleDetailsRepository vehicleDetailsRepo;
     private final VerificationOwnerDetailsRepository   ownerDetailsRepo;
     private final VvsApiClient                         vvsApiClient;
+    private final DciCertificateRepository             certRepo;
     private final DciCertificateService                dciCertificateService;
 
     @Transactional
@@ -190,6 +191,20 @@ public class VerificationService {
         d.setRegion(v.getAddressRegion());
         d.setZipCode(v.getAddressZipCode());
         ownerDetailsRepo.save(d);
+    }
+
+    public VehicleVerificationResponse getByCertNo(String certNo) {
+        DciCertificate cert = certRepo.findByCertificateNo(certNo)
+                .orElseThrow(() -> new IllegalArgumentException("Certificate not found: " + certNo));
+
+        VerificationRequest record = verificationRepo.findById(cert.getVerificationId())
+                .orElseThrow(() -> new IllegalArgumentException("Verification record not found for cert: " + certNo));
+
+        VvsVehicleData vehicleData = resolveStoredVehicleData(
+                vvsLogRepo.findByVerificationId(record.getId()).orElse(new VerificationVvsLog())
+        );
+
+        return VehicleVerificationResponse.verified(record.getReferenceNo(), record.getId(), vehicleData);
     }
 
     private String tryGetByMvAndPlate(String token, VehicleVerificationRequest request, VerificationVvsLog vvsLog) {
