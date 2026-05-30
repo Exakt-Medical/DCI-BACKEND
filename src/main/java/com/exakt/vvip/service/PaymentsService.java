@@ -1,14 +1,8 @@
 package com.exakt.vvip.service;
 
 import com.exakt.vvip.config.TlpeApiProperties;
-import com.exakt.vvip.dto.AddPaymentRequest;
-import com.exakt.vvip.dto.AddPaymentResponse;
 import com.exakt.vvip.dto.PaymentsRequest;
 import com.exakt.vvip.dto.PaymentsResponse;
-import com.exakt.vvip.entity.Payments;
-import com.exakt.vvip.entity.Purchase;
-import com.exakt.vvip.repository.PaymentsRepository;
-import com.exakt.vvip.repository.PurchaseRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -18,16 +12,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -36,69 +26,13 @@ public class PaymentsService {
     private final RestTemplate restTemplate;
     private final TlpeApiProperties props;
     private final ObjectMapper objectMapper;
-    private final PaymentsRepository paymentsRepository;
-    private final PurchaseRepository purchaseRepository;
 
     public PaymentsService(@Qualifier("tlpeRestTemplate") RestTemplate restTemplate,
                            TlpeApiProperties props,
-                           ObjectMapper objectMapper,
-                           PaymentsRepository paymentsRepository,
-                           PurchaseRepository purchaseRepository) {
+                           ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.props = props;
         this.objectMapper = objectMapper;
-        this.paymentsRepository = paymentsRepository;
-        this.purchaseRepository = purchaseRepository;
-    }
-
-    @Transactional
-    public AddPaymentResponse addPayment(AddPaymentRequest request) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-        String randomSuffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        String merchantRefId = "VVIPCTPL" + timestamp + randomSuffix;
-        log.info("Adding payment for transactionId: {}, generated merchantRefId: {}", request.getTransactionId(), merchantRefId);
-
-        Purchase purchase = null;
-        if (request.getPurchaseId() != null) {
-            purchase = purchaseRepository.findById(request.getPurchaseId())
-                    .orElseThrow(() -> new PaymentException("Purchase not found with id: " + request.getPurchaseId()));
-        }
-
-        Payments payment = Payments.builder()
-                .transactionId(request.getTransactionId())
-                .merchantRefId(merchantRefId)
-                .status("PENDING")
-                .purchase(purchase)
-                .build();
-
-        Payments savedPayment = paymentsRepository.save(payment);
-
-        return AddPaymentResponse.builder()
-                .transactionId(savedPayment.getTransactionId())
-                .merchantRefId(savedPayment.getMerchantRefId())
-                .paymentStatus(savedPayment.getStatus())
-                .purchaseId(savedPayment.getPurchase() != null ? savedPayment.getPurchase().getId() : null)
-                .message("Payment added successfully")
-                .build();
-    }
-
-    @Transactional
-    public AddPaymentResponse confirmPayment(Long transactionId) {
-        log.info("Confirming payment for transactionId: {}", transactionId);
-
-        Payments payment = paymentsRepository.findByTransactionId(transactionId)
-                .orElseThrow(() -> new PaymentException("Payment not found for transactionId: " + transactionId));
-
-        payment.setStatus("SUCCESS");
-        Payments savedPayment = paymentsRepository.save(payment);
-
-        return AddPaymentResponse.builder()
-                .transactionId(savedPayment.getTransactionId())
-                .merchantRefId(savedPayment.getMerchantRefId())
-                .paymentStatus(savedPayment.getStatus())
-                .purchaseId(savedPayment.getPurchase() != null ? savedPayment.getPurchase().getId() : null)
-                .message("Payment confirmed successfully")
-                .build();
     }
 
     public PaymentsResponse createPaymentLink(PaymentsRequest request) {
