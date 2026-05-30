@@ -1,6 +1,5 @@
 package com.exakt.vvip.service;
 
-import com.exakt.vvip.dto.VvsVehicleData;
 import com.exakt.vvip.entity.DciCertificate;
 import com.exakt.vvip.entity.User;
 import com.exakt.vvip.entity.VerificationRequest;
@@ -26,8 +25,8 @@ public class DciCertificateService {
     public String issue(VerificationRequest record,
                         String premiumType, Long issuedBy, LocalDate expiryDate) {
 
-        String certNo      = generateCertNo();
-        String issuerName  = null;
+        String certNo = generateCertNo();
+        String issuerName = null;
         String companyName = null;
 
         if (issuedBy != null) {

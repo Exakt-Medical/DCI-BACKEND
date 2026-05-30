@@ -1,46 +1,44 @@
 package com.exakt.vvip.controller;
 
-import com.exakt.vvip.entity.TransactionLog;
 import com.exakt.vvip.service.TransactionLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@RestController
-@RequestMapping("/api")
-@RequiredArgsConstructor
 @Slf4j
+@RestController
+@RequestMapping("/api/transactions")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class TransactionLogController {
 
     private final TransactionLogService transactionLogService;
 
-    // GET endpoint for frontend to fetch transaction logs
-    @GetMapping("/transaction-logs")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'LTO', 'PROCESSOR')")  // ADD THIS LINE
+    @GetMapping
     public ResponseEntity<Map<String, Object>> getTransactionLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(required = false) String search) {
 
-        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("dateCreated").descending());
-        Page<TransactionLog> logsPage = transactionLogService.getTransactionLogs(status, search, pageable);
+        log.info("Fetching transaction logs - page: {}, size: {}, status: {}, search: {}",
+                page, size, status, search);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("total", logsPage.getTotalElements());
-        response.put("page", page);
-        response.put("totalPages", logsPage.getTotalPages());
-        response.put("data", logsPage.getContent());
+        try {
+            Map<String, Object> response = transactionLogService.getTransactionLogs(
+                    status, search, page, size);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error fetching transaction logs: {}", e.getMessage(), e);
 
-        return ResponseEntity.ok(response);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to fetch transaction logs");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
     }
 }
