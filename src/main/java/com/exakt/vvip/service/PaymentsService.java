@@ -24,7 +24,10 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -50,7 +53,10 @@ public class PaymentsService {
 
     @Transactional
     public AddPaymentResponse addPayment(AddPaymentRequest request) {
-        log.info("Adding payment for transactionId: {}, merchantRefId: {}", request.getTransactionId(), request.getMerchantRefId());
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String merchantRefId = "VVIPCTPL" + timestamp + randomSuffix;
+        log.info("Adding payment for transactionId: {}, generated merchantRefId: {}", request.getTransactionId(), merchantRefId);
 
         Purchase purchase = null;
         if (request.getPurchaseId() != null) {
@@ -60,8 +66,8 @@ public class PaymentsService {
 
         Payments payment = Payments.builder()
                 .transactionId(request.getTransactionId())
-                .merchantRefId(request.getMerchantRefId())
-                .status(request.getPaymentStatus())
+                .merchantRefId(merchantRefId)
+                .status("PENDING")
                 .purchase(purchase)
                 .build();
 
@@ -73,6 +79,25 @@ public class PaymentsService {
                 .paymentStatus(savedPayment.getStatus())
                 .purchaseId(savedPayment.getPurchase() != null ? savedPayment.getPurchase().getId() : null)
                 .message("Payment added successfully")
+                .build();
+    }
+
+    @Transactional
+    public AddPaymentResponse confirmPayment(Long transactionId) {
+        log.info("Confirming payment for transactionId: {}", transactionId);
+
+        Payments payment = paymentsRepository.findByTransactionId(transactionId)
+                .orElseThrow(() -> new PaymentException("Payment not found for transactionId: " + transactionId));
+
+        payment.setStatus("SUCCESS");
+        Payments savedPayment = paymentsRepository.save(payment);
+
+        return AddPaymentResponse.builder()
+                .transactionId(savedPayment.getTransactionId())
+                .merchantRefId(savedPayment.getMerchantRefId())
+                .paymentStatus(savedPayment.getStatus())
+                .purchaseId(savedPayment.getPurchase() != null ? savedPayment.getPurchase().getId() : null)
+                .message("Payment confirmed successfully")
                 .build();
     }
 
