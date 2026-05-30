@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -20,6 +21,9 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final AuditTrailRepository auditTrailRepository;
+
+    // ✅ Philippine Time zone constant
+    private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
 
     // Helper to get current user
     private String getCurrentUser() {
@@ -44,7 +48,8 @@ public class TicketService {
                 .details(details)
                 .userstamp(getCurrentUser())
                 .userrole(getCurrentRole())
-                .timestamp(LocalDateTime.now())
+                // ✅ Use Manila time for audit logs
+                .timestamp(LocalDateTime.now(MANILA))
                 .build();
         auditTrailRepository.save(log);
     }
@@ -65,8 +70,9 @@ public class TicketService {
                 .requestedBy(request.getRequestedBy())
                 .type(request.getType())
                 .processedBy(getCurrentUser())
-                .dateUpdated(LocalDateTime.now())
-                .dateRequested(request.getDateRequested() != null ? request.getDateRequested() : LocalDateTime.now())
+                // ✅ Always set both dates server-side in Manila time
+                .dateUpdated(LocalDateTime.now(MANILA))
+                .dateRequested(LocalDateTime.now(MANILA))
                 .escalated(request.getEscalated() != null ? request.getEscalated() : "NO")
                 .roleBased(request.getRoleBased())
                 .mvFileNo(request.getMvFileNo())
@@ -81,7 +87,7 @@ public class TicketService {
                 .classification(request.getClassification())
                 .name(request.getName())
                 .address(request.getAddress())
-               // .certificateOfRegistration(request.getCertificateOfRegistration())
+                // .certificateOfRegistration(request.getCertificateOfRegistration())
                 .plateCertification(request.getPlateCertification())
                 .actualPlate(request.getActualPlate())
                 .crAttachment(request.getCrAttachment())
@@ -109,7 +115,8 @@ public class TicketService {
         existingTicket.setRequestedBy(request.getRequestedBy());
         existingTicket.setType(request.getType());
         existingTicket.setProcessedBy(request.getProcessedBy());
-        existingTicket.setDateUpdated(LocalDateTime.now());
+        // ✅ Use Manila time
+        existingTicket.setDateUpdated(LocalDateTime.now(MANILA));
         existingTicket.setDateRequested(request.getDateRequested());
         existingTicket.setEscalated(request.getEscalated());
         existingTicket.setRoleBased(request.getRoleBased());
@@ -125,10 +132,11 @@ public class TicketService {
         existingTicket.setClassification(request.getClassification());
         existingTicket.setName(request.getName());
         existingTicket.setAddress(request.getAddress());
-       // existingTicket.setCertificateOfRegistration(request.getCertificateOfRegistration());
+        // existingTicket.setCertificateOfRegistration(request.getCertificateOfRegistration());
         existingTicket.setPlateCertification(request.getPlateCertification());
         existingTicket.setActualPlate(request.getActualPlate());
-        existingTicket.setCrAttachment(request.getCrAttachment());  // ← ADD THIS
+        existingTicket.setCrAttachment(request.getCrAttachment());
+
         SupportTicket updatedTicket = ticketRepository.save(existingTicket);
 
         // Build log details based on what changed
@@ -187,7 +195,8 @@ public class TicketService {
         String refNumber = ticket.getReferenceNumber();
 
         ticket.setStatus(newStatus);
-        ticket.setDateUpdated(LocalDateTime.now());
+        // ✅ Use Manila time
+        ticket.setDateUpdated(LocalDateTime.now(MANILA));
 
         SupportTicket updatedTicket = ticketRepository.save(ticket);
 
@@ -208,7 +217,8 @@ public class TicketService {
 
         ticket.setEscalated("YES");
         ticket.setRoleBased(escalateTo);
-        ticket.setDateUpdated(LocalDateTime.now());
+        // ✅ Use Manila time
+        ticket.setDateUpdated(LocalDateTime.now(MANILA));
 
         SupportTicket updatedTicket = ticketRepository.save(ticket);
 
