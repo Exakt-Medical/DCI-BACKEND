@@ -200,11 +200,13 @@ public class VerificationService {
         VerificationRequest record = verificationRepo.findById(cert.getVerificationId())
                 .orElseThrow(() -> new IllegalArgumentException("Verification record not found for cert: " + certNo));
 
-        VvsVehicleData vehicleData = resolveStoredVehicleData(
-                vvsLogRepo.findByVerificationId(record.getId()).orElse(new VerificationVvsLog())
-        );
+        VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo
+                .findByVerificationId(record.getId()).orElse(null);
 
-        return VehicleVerificationResponse.verified(record.getReferenceNo(), record.getId(), vehicleData);
+        VerificationOwnerDetails ownerDetails = ownerDetailsRepo
+                .findByVerificationId(record.getId()).orElse(null);
+
+        return VehicleVerificationResponse.certificate(cert, record, vehicleDetails, ownerDetails);
     }
 
     private String tryGetByMvAndPlate(String token, VehicleVerificationRequest request, VerificationVvsLog vvsLog) {
