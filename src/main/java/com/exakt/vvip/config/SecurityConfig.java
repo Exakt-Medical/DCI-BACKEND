@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/merchant-callback/**").permitAll()
+                        .requestMatchers("/api/vouchers/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/webhook-to-external").permitAll()  // ADD THIS - Webhook doesn't need auth

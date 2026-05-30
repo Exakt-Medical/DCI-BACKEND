@@ -56,18 +56,11 @@ public class MerchantWebhookService {
         registerWebhook(buildWebhookKey(webhookClaims.getJti(), transactionId));
 
         TransactionReport report = toTransactionReport(webhookClaims, claims);
-        BilleroConfirmResult confirmResult = confirmPayment(report);
         
-        try {
-            System.out.println("Executing Billeroo Purchase Request for transaction: " + report.getTransactionId());
-            var purchaseResult = billeroVoucherService.createPurchaseRequest(report);
-            System.out.println("Purchase Request Result: Success=" + purchaseResult.isSuccess() + ", Message=" + purchaseResult.getMessage());
-        } catch (Exception ex) {
-            System.err.println("Failed to execute Billeroo Purchase Request for transaction: " + report.getTransactionId());
-            ex.printStackTrace();
-        }
+        // Removed silent call to Billeroo. TLPE webhook should just update orders,
+        // and hand off to /api/vouchers/process.
         
-        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, confirmResult);
+        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, null);
 
         MerchantCallbackResponse response = MerchantCallbackResponse.builder()
                 .success(true)
@@ -316,7 +309,7 @@ public class MerchantWebhookService {
 
         BigDecimal amountPaid = resolveAmount(payment, customParameters);
         String merchantReference = payment == null ? null : payment.getMerchantReferenceId();
-        String paymentReference = resolvePaymentReference(payment, data.getTransactionId());
+        String paymentReference = resolvePaymentReference(result);
         String companyCode = customParameters == null ? null : customParameters.getCompanyCode();
         String companyName = customParameters == null ? null : customParameters.getCompanyName();
         Integer voucherCount = customParameters == null ? null : customParameters.getVoucherCount();
@@ -362,30 +355,11 @@ public class MerchantWebhookService {
         return BigDecimal.ZERO;
     }
 
-    private String resolvePaymentReference(MerchantWebhookClaims.Payment payment, String transactionId) {
-        if (StringUtils.hasText(transactionId)) {
-            return transactionId;
+    private String resolvePaymentReference(MerchantWebhookClaims.Result result) {
+        if (result != null && StringUtils.hasText(result.getProcessorReferenceId())) {
+            return result.getProcessorReferenceId();
         }
-
-        if (payment == null) {
-            return null;
-        }
-
-        List<String> candidates = new ArrayList<>();
-        if (payment.getOtherReferences() != null) {
-            candidates.addAll(payment.getOtherReferences());
-        }
-        if (StringUtils.hasText(payment.getMerchantReferenceId())) {
-            candidates.add(payment.getMerchantReferenceId());
-        }
-
-        for (String candidate : candidates) {
-            if (StringUtils.hasText(candidate)) {
-                return candidate;
-            }
-        }
-
-        return null;
+        return "";
     }
 
     private boolean isSuccessfulStatus(String statusCode, String message) {

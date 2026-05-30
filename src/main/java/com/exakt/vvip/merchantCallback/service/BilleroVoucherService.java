@@ -3,8 +3,6 @@ package com.exakt.vvip.merchantCallback.service;
 import com.exakt.vvip.merchantCallback.client.BilleroClient;
 import com.exakt.vvip.merchantCallback.dto.BilleroConfirmRequest;
 import com.exakt.vvip.merchantCallback.dto.BilleroConfirmResult;
-import com.exakt.vvip.merchantCallback.dto.BilleroPurchaseRequest;
-import com.exakt.vvip.merchantCallback.dto.BilleroPurchaseResult;
 import com.exakt.vvip.merchantCallback.dto.TransactionReport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,25 +27,6 @@ public class BilleroVoucherService {
                 .build();
 
         return billeroClient.confirmPayment(request);
-    }
-
-    public BilleroPurchaseResult createPurchaseRequest(TransactionReport report) {
-        String companyName = report.getCompanyName() != null ? report.getCompanyName() : "Exakt Medical";
-        
-        BilleroPurchaseRequest request = BilleroPurchaseRequest.builder()
-                .companyCode(report.getCompanyCode())
-                .companyName(companyName)
-                .contact(report.getContactMobile())
-                .email(report.getEmail())
-                .firstName(report.getFirstName())
-                .lastName(report.getLastName())
-                .reference(report.getMerchantReference())
-                .totalAmount(defaultAmount(report.getAmountPaid()))
-                .voucherCount(report.getVoucherCount())
-                .voucherFee(report.getVoucherFee())
-                .build();
-
-        return billeroClient.createPurchaseRequest(request);
     }
 
     private BigDecimal defaultAmount(BigDecimal amountPaid) {

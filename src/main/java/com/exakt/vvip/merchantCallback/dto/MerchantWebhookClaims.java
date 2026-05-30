@@ -128,8 +128,10 @@ public class MerchantWebhookClaims {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Result {
 
-        @JsonProperty("statusCode")
+        @JsonProperty("status_code")
         private String statusCode;
+        @JsonProperty("processor_reference_id")
+        private String processorReferenceId;
         private String message;
         private String timestamp;
     }
