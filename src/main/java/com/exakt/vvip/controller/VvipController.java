@@ -47,13 +47,10 @@ public class VvipController {
         return toResponseEntity(result);
     }
 
-//    @PostMapping("/lookup")
-//    @Operation(summary = "Preview vehicle data from VVS — no record saved, cannot be confirmed")
-//    public ResponseEntity<VvsLookupResponse> lookup(
-//            @Valid @RequestBody VehicleVerificationRequest request) {
-//
-//        return ResponseEntity.ok(verificationService.lookup(request));
-//    }
+    @GetMapping("/certificate/{certNo}")
+    public ResponseEntity<VehicleVerificationResponse> getByCertNo(@PathVariable String certNo) {
+        return ResponseEntity.ok(verificationService.getByCertNo(certNo));
+    }
 
     // -------------------------------------------------------------------------
 

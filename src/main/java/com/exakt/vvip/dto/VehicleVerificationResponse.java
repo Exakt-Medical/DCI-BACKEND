@@ -1,9 +1,15 @@
 package com.exakt.vvip.dto;
 
+import com.exakt.vvip.entity.DciCertificate;
+import com.exakt.vvip.entity.VerificationOwnerDetails;
+import com.exakt.vvip.entity.VerificationRequest;
+import com.exakt.vvip.entity.VerificationVehicleDetails;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Getter
 @Setter
@@ -38,6 +44,11 @@ public class VehicleVerificationResponse {
 
     // --- Address (combined into one display string) ---
     private String ownerAddress;
+
+    private String issuedDate;
+    private String issuer;
+
+    private String premiumType;
 
     // -------------------------------------------------------------------------
     // STEP 1 success: VVS returned a vehicle record
@@ -122,6 +133,59 @@ public class VehicleVerificationResponse {
                 nonBlank(v.getAddressRegion()),
                 nonBlank(v.getAddressZipCode())
         ).replaceAll(",\\s*,", ",").strip();
+    }
+
+    public static VehicleVerificationResponse certificate(
+            DciCertificate cert,
+            VerificationRequest record,
+            VerificationVehicleDetails v,
+            VerificationOwnerDetails o) {
+
+        VehicleVerificationResponse r = new VehicleVerificationResponse();
+        r.verificationStatus = "COMPLETED";
+        r.certificateNo      = cert.getCertificateNo();
+        r.referenceNo        = record.getReferenceNo();
+        r.verificationId     = record.getId();
+        r.processedAt        = LocalDateTime.now();
+
+        r.mvFileNo       = record.getMvFileNumber();
+        r.plateNumber    = record.getPlateNumber();
+        r.engineNumber   = record.getEngineNumber();
+        r.chassisNumber  = record.getChassisNumber();
+
+        if (v != null) {
+            r.make                 = v.getMake();
+            r.series               = v.getSeries();
+            r.color                = v.getColor();
+            r.yearModel            = v.getYearModel();
+            r.classification       = v.getClassification();
+            r.bodyType             = v.getBodyType();
+            r.denomination         = v.getDenomination();
+            r.lastRegistrationDate = v.getLastRegistrationDate() != null
+                    ? v.getLastRegistrationDate().toString() : null;
+        }
+
+        if (o != null) {
+            r.ownerFirstName  = o.getFirstName();
+            r.ownerMiddleName = o.getMiddleName();
+            r.ownerLastName   = o.getLastName();
+            r.ownerAddress    = Stream.of(
+                            o.getHouseBldgNo(), o.getStreetName(),
+                            o.getBarangay(), o.getMunicipality(),
+                            o.getProvince(), o.getRegion())
+                    .filter(s -> s != null && !s.isBlank())
+                    .collect(Collectors.joining(", "));
+        }
+
+        r.premiumType = cert.getPremiumType();
+
+        // Cert metadata
+        r.issuedDate = cert.getDateCreated() != null ? cert.getDateCreated().toLocalDate().toString() : null;
+        r.issuer     = cert.getIssuerName() != null  ? cert.getIssuerName()
+                : cert.getCompanyName() != null  ? cert.getCompanyName()
+                : "PREMIER INSURANCE CORP.";
+
+        return r;
     }
 
     private static String nonBlank(String s) {

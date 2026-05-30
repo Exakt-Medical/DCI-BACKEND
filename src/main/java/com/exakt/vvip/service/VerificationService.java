@@ -77,6 +77,12 @@ public class VerificationService {
                 saveVehicleDetails(record.getId(), vehicleData);
                 saveOwnerDetails(record.getId(), vehicleData);
 
+                // Update verification request with vehicle details from VVS
+                record.setMvFileNumber(vehicleData.getMvFileNo());
+                record.setPlateNumber(vehicleData.getPlateNo());
+                record.setChassisNumber(vehicleData.getChassisNo());
+                record.setEngineNumber(vehicleData.getEngineNo());
+
                 record.setVerificationStatus(VerificationStatus.VERIFIED);
                 verificationRepo.save(record);
                 vvsLogRepo.save(vvsLog);
@@ -206,6 +212,22 @@ public class VerificationService {
         d.setRegion(v.getAddressRegion());
         d.setZipCode(v.getAddressZipCode());
         ownerDetailsRepo.save(d);
+    }
+
+    public VehicleVerificationResponse getByCertNo(String certNo) {
+        DciCertificate cert = dciCertificateRepo.findByCertificateNo(certNo)
+                .orElseThrow(() -> new IllegalArgumentException("Certificate not found: " + certNo));
+
+        VerificationRequest record = verificationRepo.findById(cert.getVerificationId())
+                .orElseThrow(() -> new IllegalArgumentException("Verification record not found for cert: " + certNo));
+
+        VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo
+                .findByVerificationId(record.getId()).orElse(null);
+
+        VerificationOwnerDetails ownerDetails = ownerDetailsRepo
+                .findByVerificationId(record.getId()).orElse(null);
+
+        return VehicleVerificationResponse.certificate(cert, record, vehicleDetails, ownerDetails);
     }
 
     private String tryGetByMvAndPlate(String token, VehicleVerificationRequest request, VerificationVvsLog vvsLog) {
