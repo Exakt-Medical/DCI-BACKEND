@@ -11,13 +11,19 @@ import com.exakt.vvip.repository.InsuranceProductRepository;
 import com.exakt.vvip.repository.PurchaseRepository;
 import com.exakt.vvip.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.exakt.vvip.dto.VoucherValidateResponse;
+import com.exakt.vvip.entity.Voucher;
+import com.exakt.vvip.repository.VoucherRepository;
+import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VoucherService {
@@ -26,6 +32,8 @@ public class VoucherService {
     private final PurchaseRepository purchaseRepository;
     private final UserRepository userRepository;
     private final InsuranceFeeRepository insuranceFeeRepository;
+    private final VoucherRepository voucherRepository;
+    private final BillerooRedeemClient billerooRedeemClient;
 
     public List<InsuranceFeeResponse> getAllProducts() {
         List<InsuranceProduct> products = productRepository.findByIsActiveTrue();
@@ -126,6 +134,69 @@ public class VoucherService {
                 .redeemedOn(p.getRedeemedOn())
                 .insuranceCode(p.getInsuranceCode())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public VoucherValidateResponse validateVoucherByCode(String voucherCode) {
+
+        Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
+                .orElseThrow(() -> new RuntimeException("Voucher code not found."));
+
+        if (!"AVAILABLE".equalsIgnoreCase(voucher.getStatus())) {
+            throw new RuntimeException(
+                    "Voucher is not available. Current status: " + voucher.getStatus());
+        }
+
+        if (voucher.getExpiresAt() != null
+                && voucher.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Voucher has already expired.");
+        }
+
+        long remaining = voucherRepository.countByCurrentUserIdAndStatus(
+                voucher.getCurrentUser().getId(), "AVAILABLE");
+
+        return VoucherValidateResponse.builder()
+                .voucherCode(voucher.getVoucherCode())
+                .status(voucher.getStatus())
+                .expiresAt(voucher.getExpiresAt() != null
+                        ? voucher.getExpiresAt().toString() : null)
+                .ownerUsername(voucher.getCurrentUser().getUsername())
+                .remainingVouchers(remaining)
+                .build();
+    }
+
+    @Transactional
+    public void redeemVoucherByCode(String voucherCode, String certNo) {
+
+        Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
+                .orElseThrow(() -> new RuntimeException("Voucher not found: " + voucherCode));
+
+        if (!"AVAILABLE".equalsIgnoreCase(voucher.getStatus())) {
+            throw new RuntimeException(
+                    "Cannot redeem — voucher status is: " + voucher.getStatus());
+        }
+
+        // Call Billeroo first — transactionReference = certNo, companyCode from voucher row
+        String voucherReference = billerooRedeemClient.redeem(certNo, voucher.getCompanyCode());
+
+        // Mark redeemed in our DB regardless of Billeroo result
+        voucher.setStatus("REDEEMED");
+        voucher.setRedeemedAt(LocalDateTime.now());
+
+        if (voucherReference != null) {
+            voucher.setVoucherReference(voucherReference);
+        } else {
+            log.warn("Billeroo redeem returned no voucherReference for certNo={} voucherCode={}",
+                    certNo, voucherCode);
+        }
+
+        voucherRepository.save(voucher);
+
+        long remaining = voucherRepository.countByCurrentUserIdAndStatus(
+                voucher.getCurrentUser().getId(), "AVAILABLE");
+
+        log.info("Voucher {} redeemed — certNo={} billerooRef={} remaining={}",
+                voucherCode, certNo, voucherReference, remaining);
     }
 
     private String randomAlpha(int length) {
