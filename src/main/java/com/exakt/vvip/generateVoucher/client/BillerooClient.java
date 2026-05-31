@@ -100,6 +100,27 @@ public class BillerooClient {
         return resp;
     }
 
+    public com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse createPurchaseRequest(com.exakt.vvip.generateVoucher.dto.BillerooPurchaseRequest payload) {
+        String url = billerooConfirmUrl.replace("/confirm-payment", "/purchase-request");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", billerooAuthToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                new HttpEntity<>(payload, headers),
+                com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse.class
+        );
+
+        if (response.getStatusCode() != HttpStatus.CREATED && response.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Billeroo purchase request failed for merchant reference: " + payload.getReference());
+        }
+
+        return response.getBody();
+    }
+
     public BillerooCountResponse getVoucherCount(String companyCode) {
         String baseUrl = billerooConfirmUrl.replace("/confirm-payment", "/count");
         String url = baseUrl + "?companyCode=" + companyCode; // Assuming query parameter, or could be /count/{companyCode}

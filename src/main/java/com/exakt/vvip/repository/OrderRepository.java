@@ -15,6 +15,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByTlpeTransactionId(String tlpeTransactionId);
 
+    Optional<Order> findByInvoiceReference(String invoiceReference);
+
     List<Order> findByStatus(String status);
 
     List<Order> findByUser_Id(Long userId);

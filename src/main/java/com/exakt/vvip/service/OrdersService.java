@@ -9,6 +9,7 @@ import com.exakt.vvip.entity.User;
 import com.exakt.vvip.repository.CompanyRepository;
 import com.exakt.vvip.repository.OrderRepository;
 import com.exakt.vvip.repository.UserRepository;
+import com.exakt.vvip.generateVoucher.client.BillerooClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class OrdersService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
+    private final BillerooClient billerooClient;
 
     private static final DateTimeFormatter REF_FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -50,13 +52,15 @@ public class OrdersService {
                          ObjectMapper objectMapper,
                          OrderRepository orderRepository,
                          UserRepository userRepository,
-                         CompanyRepository companyRepository) {
+                         CompanyRepository companyRepository,
+                         BillerooClient billerooClient) {
         this.restTemplate = restTemplate;
         this.props = props;
         this.objectMapper = objectMapper;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
+        this.billerooClient = billerooClient;
     }
 
     @Transactional
@@ -95,6 +99,43 @@ public class OrdersService {
                 .build();
         order = orderRepository.save(order);
         log.info("Order {} created (PENDING) for user {} ref={}", order.getId(), username, merchantReferenceId);
+
+        // ── Check Threshold ───────────────────────────────────────────────────
+        if (originalAmount.compareTo(new BigDecimal("50000")) > 0) {
+            String firstName = request.getCustomer() != null ? request.getCustomer().getFirstName() : user.getFirstName();
+            String lastName = request.getCustomer() != null ? request.getCustomer().getLastName() : user.getLastName();
+            String email = request.getCustomer() != null && request.getCustomer().getContact() != null ? request.getCustomer().getContact().getEmail() : user.getEmail();
+            String mobile = request.getCustomer() != null && request.getCustomer().getContact() != null ? request.getCustomer().getContact().getMobile() : user.getMobile();
+
+            com.exakt.vvip.generateVoucher.dto.BillerooPurchaseRequest purchaseReq = com.exakt.vvip.generateVoucher.dto.BillerooPurchaseRequest.builder()
+                    .companyCode(request.getCompanyCode())
+                    .companyName(company.getCompanyName())
+                    .contact(mobile)
+                    .email(email)
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .reference(merchantReferenceId)
+                    .totalAmount(originalAmount)
+                    .voucherCount(voucherCount)
+                    .voucherFee(voucherFee)
+                    .build();
+
+            com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse purchaseResp = billerooClient.createPurchaseRequest(purchaseReq);
+            String invoiceRef = purchaseResp.getData().getReference();
+
+            order.setInvoiceReference(invoiceRef);
+            order.setStatus("PENDING_INVOICE_PAYMENT");
+            orderRepository.save(order);
+            log.info("Order {} updated to PENDING_INVOICE_PAYMENT, invoice={}", order.getId(), invoiceRef);
+
+            return OrdersResponse.builder()
+                    .orderId(order.getId())
+                    .merchantReferenceId(merchantReferenceId)
+                    .invoiceReference(invoiceRef)
+                    .link(null)
+                    .status("PENDING_INVOICE_PAYMENT")
+                    .build();
+        }
 
         // ── Inject merchant ref and auth key into TLPE payload ────────────────
         if (request.getPayment() != null) {
