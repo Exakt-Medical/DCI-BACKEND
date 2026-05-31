@@ -12,4 +12,6 @@ public class LoginResponse {
     private String role;
     private String message;
     private Boolean allowedToBuyVoucher;
+    private Long companyId;
+    private String companyCode;
 }

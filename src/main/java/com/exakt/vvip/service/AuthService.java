@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
+    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
@@ -34,6 +36,8 @@ public class AuthService {
 
         String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name());
 
+        com.exakt.vvip.entity.Company company = (user.getBranch() != null) ? user.getBranch().getCompany() : null;
+
         return LoginResponse.builder()
                 .token(token)
                 .email(user.getEmail())
@@ -43,7 +47,8 @@ public class AuthService {
                 .role(user.getRole().name())
                 .allowedToBuyVoucher(user.getIsBuyVoucherAllowed())
                 .message("Login successful")
-                .allowedToBuyVoucher(user.getIsBuyVoucherAllowed())
+                .companyId(company != null ? company.getId() : null)
+                .companyCode(company != null ? company.getCode() : null)
                 .build();
     }
 

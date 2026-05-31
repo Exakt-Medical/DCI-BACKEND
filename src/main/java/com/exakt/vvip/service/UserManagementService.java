@@ -282,6 +282,8 @@ public class UserManagementService {
                 .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
                 .branchName(user.getBranch() != null ? user.getBranch().getBranchName() : null)
                 .branchCompanyName(user.getBranch() != null && user.getBranch().getCompany() != null ? user.getBranch().getCompany().getCompanyName() : null)
+                .companyId(user.getBranch() != null && user.getBranch().getCompany() != null ? user.getBranch().getCompany().getId() : null)
+                .companyCode(user.getBranch() != null && user.getBranch().getCompany() != null ? user.getBranch().getCompany().getCode() : null)
                 .managerId(user.getManager() != null ? user.getManager().getId() : null)
                 .managerName(user.getManager() != null ? user.getManager().getFirstName() + " " + user.getManager().getLastName() : null)
                 .managerBranchName(user.getManager() != null && user.getManager().getBranch() != null ? user.getManager().getBranch().getBranchName() : null)
