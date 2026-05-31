@@ -50,6 +50,9 @@ public class Order {
     @Column(name = "tlpe_transaction_id", length = 100)
     private String tlpeTransactionId;
 
+    @Column(name = "invoice_reference", length = 255)
+    private String invoiceReference;
+
     @Column(name = "payment_reference", length = 255)
     private String paymentReference;
 

@@ -21,6 +21,7 @@ public class TransactionReport {
     private boolean success;
     private String transactionId;
     private BigDecimal amountPaid;
+    private BigDecimal processingFee;
     private String merchantReference;
     private String paymentReference;
     private String companyCode;

@@ -6,6 +6,7 @@ import lombok.*;
 public class CompanyResponse {
     private Long id;
     private String companyName;
+    private String email;
     private String code;
     private String provider;
     private String approvalStatus;

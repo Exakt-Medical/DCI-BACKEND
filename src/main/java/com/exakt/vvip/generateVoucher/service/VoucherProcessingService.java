@@ -8,6 +8,7 @@ import com.exakt.vvip.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -28,26 +29,60 @@ public class VoucherProcessingService {
             BillerooConfirmResponse billerooResp = billerooClient.confirmPayment(order);
 
             // Step 3: Update order
-            orderRepository.updateBillerooConfirmed(order.getId());
+            order.setBillerooConfirmed(true);
+            order.setBillerooConfirmedAt(java.time.LocalDateTime.now());
             order.setStatus("BILLEROO_CONFIRMED");
+            orderRepository.save(order);
 
             // Step 4: Generate vouchers
             int quantity = billerooResp.getData().getVoucherCount();
-            voucherGenerator.generateVouchers(order, quantity);
-
-            // Step 5: Update company count
-            companyRepository.incrementAvailableVouchers(order.getCompany().getId(), quantity);
-
-            // Step 6: Verify against Billeroo
-            countVerifier.verifyCount(order);
-
-            // Step 7: Complete
-            orderRepository.markCompleted(order.getId());
+            generateAndComplete(order, quantity);
 
         } catch (Exception e) {
-            orderRepository.markFailed(order.getId());
             log.error("[VOUCHER PROCESS] Failed for order {}: {}", order.getId(), e.getMessage());
+            markFailedInNewTransaction(order.getId());
             throw e;
         }
+    }
+
+    @Transactional
+    public void processPurchaseRequest(Order order, int quantity) {
+        try {
+            // Billeroo already confirmed via webhook
+            order.setBillerooConfirmed(true);
+            order.setBillerooConfirmedAt(java.time.LocalDateTime.now());
+            order.setStatus("BILLEROO_CONFIRMED");
+            orderRepository.save(order);
+
+            generateAndComplete(order, quantity);
+        } catch (Exception e) {
+            log.error("[PURCHASE REQUEST PROCESS] Failed for order {}: {}", order.getId(), e.getMessage());
+            markFailedInNewTransaction(order.getId());
+            throw e;
+        }
+    }
+
+    private void generateAndComplete(Order order, int quantity) {
+        // Generate vouchers
+        voucherGenerator.generateVouchers(order, quantity);
+
+        // Update company count
+        companyRepository.incrementAvailableVouchers(order.getCompany().getId(), quantity);
+
+        // Verify against Billeroo
+        countVerifier.verifyCount(order);
+
+        // Complete
+        order.setStatus("COMPLETED");
+        orderRepository.save(order);
+    }
+
+    /**
+     * Runs in a separate transaction so the FAILED status is committed
+     * even when the caller's transaction rolls back due to the re-thrown exception.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markFailedInNewTransaction(Long orderId) {
+        orderRepository.markFailed(orderId);
     }
 }

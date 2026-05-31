@@ -7,10 +7,13 @@ import com.exakt.vvip.generateVoucher.dto.BillerooCountResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class BillerooClient {
 
     private final RestTemplate restTemplate;
@@ -30,9 +33,9 @@ public class BillerooClient {
                 .amountPaid(order.getOriginalAmount())
                 .companyCode(order.getCompanyCode())
                 .merchantReference(order.getMerchantReferenceId())
-                .paymentReference(order.getPaymentReference())
+                .paymentReference(order.getPaymentReference() != null ? order.getPaymentReference() : "")
                 .statusCode("OK.00.00")
-                .voucherCount(order.getVoucherCount())
+                .voucherCount(order.getVoucherCount() != null ? order.getVoucherCount() : 0)
                 .voucherFee(order.getVoucherFee())
                 .build();
 
@@ -40,14 +43,79 @@ public class BillerooClient {
         headers.set("Authorization", billerooAuthToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        ResponseEntity<BillerooConfirmResponse> response = restTemplate.postForEntity(
-                billerooConfirmUrl,
+        try {
+            ResponseEntity<BillerooConfirmResponse> response = restTemplate.postForEntity(
+                    billerooConfirmUrl,
+                    new HttpEntity<>(payload, headers),
+                    BillerooConfirmResponse.class
+            );
+
+            if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+                throw new RuntimeException("Billeroo confirm-payment failed for order: " + order.getId());
+            }
+
+            return response.getBody();
+
+        } catch (HttpStatusCodeException ex) {
+            String body = ex.getResponseBodyAsString();
+            // Billeroo returns 422 or 500 when the merchant reference was already processed
+            // (NonUniqueResultException means it already exists in their DB — treat as success)
+            if (isAlreadyProcessed(ex.getStatusCode().value(), body)) {
+                log.warn("[BillerooClient] confirmPayment already processed for order {} — treating as success. Billeroo: {}",
+                        order.getId(), body);
+                return buildAlreadyProcessedResponse(order);
+            }
+            throw new RuntimeException(
+                    "Billeroo confirm-payment failed for order " + order.getId()
+                    + " [HTTP " + ex.getStatusCode().value() + "]: " + body, ex);
+        }
+    }
+
+    /**
+     * Returns true when Billeroo signals the payment was already confirmed:
+     * - HTTP 422 (explicit "already processed" response)
+     * - HTTP 500 with NonUniqueResultException (duplicate merchant reference in Billeroo DB)
+     */
+    private boolean isAlreadyProcessed(int statusCode, String body) {
+        if (statusCode == 422) return true;
+        if (body == null) return false;
+        String lower = body.toLowerCase();
+        return lower.contains("already been processed")
+                || lower.contains("nonuniqueresultexception")
+                || lower.contains("query did not return a unique result");
+    }
+
+    /**
+     * Synthesises a minimal success response when Billeroo confirms the payment was
+     * already recorded — allows processing to continue idempotently.
+     */
+    private BillerooConfirmResponse buildAlreadyProcessedResponse(Order order) {
+        BillerooConfirmResponse resp = new BillerooConfirmResponse();
+        resp.setStatus(200);
+        resp.setMessage("Already processed");
+        BillerooConfirmResponse.BillerooConfirmData data = new BillerooConfirmResponse.BillerooConfirmData();
+        data.setVoucherCount(order.getVoucherCount() != null ? order.getVoucherCount() : 0);
+        data.setDescription("already_processed");
+        resp.setData(data);
+        return resp;
+    }
+
+    public com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse createPurchaseRequest(com.exakt.vvip.generateVoucher.dto.BillerooPurchaseRequest payload) {
+        String url = billerooConfirmUrl.replace("/confirm-payment", "/purchase-request");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", billerooAuthToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
                 new HttpEntity<>(payload, headers),
-                BillerooConfirmResponse.class
+                com.exakt.vvip.generateVoucher.dto.BillerooPurchaseResponse.class
         );
 
-        if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
-            throw new RuntimeException("Billeroo confirm-payment failed for order: " + order.getId());
+        if (response.getStatusCode() != HttpStatus.CREATED && response.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Billeroo purchase request failed for merchant reference: " + payload.getReference());
         }
 
         return response.getBody();
@@ -72,5 +140,32 @@ public class BillerooClient {
         }
 
         return response.getBody();
+    }
+    public void syncCompany(com.exakt.vvip.entity.Company company) {
+        String url = billerooConfirmUrl.replace("/confirm-payment", "/company");
+
+        com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest payload = new com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest();
+        com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest.Data data = new com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest.Data();
+        data.setCode(company.getCode());
+        data.setEmail(company.getEmail());
+        data.setName(company.getCompanyName());
+        data.setStatus("ACTIVE".equals(company.getStatus()) ? 1 : 0);
+        
+        payload.setData(java.util.Collections.singletonList(data));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", billerooAuthToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url,
+                HttpMethod.PUT,
+                new HttpEntity<>(payload, headers),
+                String.class
+        );
+
+        if (response.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Billeroo company sync failed for company: " + company.getCompanyName());
+        }
     }
 }

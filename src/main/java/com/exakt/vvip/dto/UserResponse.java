@@ -17,6 +17,8 @@ public class UserResponse {
     private Long branchId;
     private String branchName;
     private String branchCompanyName;
+    private Long companyId;
+    private String companyCode;
     private Long managerId;
     private String managerName;
     private String managerBranchName;
