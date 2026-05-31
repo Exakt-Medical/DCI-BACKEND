@@ -102,8 +102,17 @@ public class TlpeClient {
                         responseBody);
             }
 
+            // Resolve status code first so we can decide success/failure
+            String resolvedStatusCode = firstText(payload, root,
+                    "status_code", "statusCode", "payment.status_code",
+                    "result.statusCode", "status", "result.status_code");
+
+            // Any status code beginning with "ER" (e.g. ER.00.00) is a payment failure
+            boolean isFailedStatusCode = resolvedStatusCode != null
+                    && resolvedStatusCode.toUpperCase(java.util.Locale.ROOT).startsWith("ER");
+
             return TransactionReport.builder()
-                    .success(true)
+                    .success(!isFailedStatusCode)
                     .transactionId(transactionId)
                     .amountPaid(readBigDecimal(payload, root,
                             "custom_parameters.original_amount", "payment.amount",
@@ -125,9 +134,7 @@ public class TlpeClient {
                             "voucher_count", "voucherCount", "custom_parameters.voucher_count"))
                     .voucherFee(readBigDecimal(payload, root,
                             "voucher_fee", "voucherFee", "custom_parameters.voucher_fee"))
-                    .statusCode(firstText(payload, root,
-                            "status_code", "statusCode", "payment.status_code",
-                            "result.statusCode", "status"))
+                    .statusCode(resolvedStatusCode)
                     .voucherDescription(firstText(payload, root,
                             "voucher_description", "voucherDescription", "description", "message"))
                     .message(firstText(payload, root, "message", "status_message"))

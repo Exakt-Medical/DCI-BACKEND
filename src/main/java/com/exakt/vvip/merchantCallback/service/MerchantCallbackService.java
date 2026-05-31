@@ -39,6 +39,19 @@ public class MerchantCallbackService {
         // ── Enrich report with order DB data (fills nulls TLPE /report omits) ─
         TransactionReport enrichedReport = enrichReportFromOrder(report, order);
 
+        // ── If payment failed, return a failure response without proceeding ─────
+        if (!report.isSuccess() || (order != null && "FAILED".equals(order.getStatus()))) {
+            String failureMessage = StringUtils.hasText(report.getMessage())
+                    ? report.getMessage()
+                    : "Payment failed with status: " + report.getStatusCode();
+            PaymentSummaryResponse failSummary = MerchantCallbackMapper.toPaymentSummary(enrichedReport, null);
+            return MerchantCallbackResponse.builder()
+                    .success(false)
+                    .message(failureMessage)
+                    .data(failSummary)
+                    .build();
+        }
+
         PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(enrichedReport, null);
 
         return MerchantCallbackResponse.builder()
@@ -92,11 +105,18 @@ public class MerchantCallbackService {
             order.setTotalCharged(order.getOriginalAmount().add(processingFee));
             order.setStatus("PAYMENT_CONFIRMED");
             log.info("Order {} → PAYMENT_CONFIRMED (via /report), processingFee={}", order.getId(), processingFee);
+        } else if ("PAYMENT_VERIFYING".equals(currentStatus) && !report.isSuccess()) {
+            // Payment failed (e.g. ER.00.00) — mark FAILED, skip voucher processing
+            order.setStatus("FAILED");
+            log.warn("Order {} → FAILED (via /report), statusCode={}, message={}",
+                    order.getId(), report.getStatusCode(), report.getMessage());
+        } else if ("FAILED".equals(currentStatus)) {
+            log.info("Order {} already FAILED — skipping update.", order.getId());
         }
 
         orderRepository.save(order);
 
-        // Auto-trigger voucher generation after PAYMENT_CONFIRMED
+        // Auto-trigger voucher generation only for successfully confirmed orders
         if ("PAYMENT_CONFIRMED".equals(order.getStatus())
                 && !Boolean.TRUE.equals(order.getBillerooConfirmed())) {
             try {
