@@ -4,11 +4,15 @@ import com.exakt.vvip.dto.DashboardResponseDto;
 import com.exakt.vvip.dto.DashboardStatsDto;
 import com.exakt.vvip.dto.RecentTransactionDto;
 import com.exakt.vvip.dto.TransactionLogDTO;
+import com.exakt.vvip.entity.Purchase;
 import com.exakt.vvip.entity.User;
 import com.exakt.vvip.entity.VerificationRequest;
+import com.exakt.vvip.entity.VoucherTransferEntity;
 import com.exakt.vvip.repository.DciCertificateRepository;
+import com.exakt.vvip.repository.PurchaseRepository;
 import com.exakt.vvip.repository.UserRepository;
 import com.exakt.vvip.repository.VerificationRequestRepository;
+import com.exakt.vvip.repository.VoucherTransferRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,6 +37,8 @@ public class TransactionLogService {
     private final VerificationRequestRepository verificationRepo;
     private final DciCertificateRepository dciCertificateRepo;
     private final UserRepository userRepository;
+    private final PurchaseRepository purchaseRepository;
+    private final VoucherTransferRepository voucherTransferRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("MMM. dd, yyyy hh:mm a");
@@ -106,9 +112,11 @@ public class TransactionLogService {
 
     private Long getTotalAgents() {
         try {
-            return userRepository.countByRole(User.UserRole.AGENT);
+            long agents = userRepository.countByRole(User.UserRole.AGENT);
+            long subagents = userRepository.countByRole(User.UserRole.SUBAGENT);
+            return agents + subagents;
         } catch (Exception e) {
-            log.error("Error counting agents: {}", e.getMessage());
+            log.error("Error counting total agents: {}", e.getMessage());
             return 0L;
         }
     }
@@ -133,22 +141,46 @@ public class TransactionLogService {
         }
     }
 
+    /**
+     * Get count of vouchers purchased today from the purchases table
+     */
     private Long getTodayPurchasedVouchersCount() {
-        // This depends on your voucher/purchase table
-        // For now, return 0 - you'll need to implement based on your purchase history table
         try {
-            return 0L;
+            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+            LocalDateTime todayEnd = LocalDate.now().atTime(23, 59, 59);
+
+            List<Purchase> todayPurchases = purchaseRepository.findAll().stream()
+                    .filter(p -> p.getPurchaseDate() != null)
+                    .filter(p -> p.getPurchaseDate().isAfter(todayStart) && p.getPurchaseDate().isBefore(todayEnd))
+                    .collect(Collectors.toList());
+
+            long totalVouchers = todayPurchases.size();
+            log.debug("Today's purchased vouchers count: {}", totalVouchers);
+            return totalVouchers;
         } catch (Exception e) {
             log.error("Error counting today purchased vouchers: {}", e.getMessage());
             return 0L;
         }
     }
 
+    /**
+     * Get count of available vouchers from the vouchers table
+     * Available vouchers = vouchers with status 'AVAILABLE' that are not expired
+     */
     private Long getAvailableVouchersCount() {
-        // This depends on your voucher table
-        // For now, return 0 - you'll need to implement based on your voucher/redemption system
         try {
-            return 0L;
+            LocalDateTime now = LocalDateTime.now();
+
+            // Get all vouchers with status AVAILABLE
+            List<VoucherTransferEntity> availableVouchers = voucherTransferRepository.findByStatus("AVAILABLE");
+
+            // Filter out expired ones
+            long count = availableVouchers.stream()
+                    .filter(v -> v.getExpiresAt() == null || v.getExpiresAt().isAfter(now))
+                    .count();
+
+            log.debug("Available vouchers count: {}", count);
+            return count;
         } catch (Exception e) {
             log.error("Error counting available vouchers: {}", e.getMessage());
             return 0L;
