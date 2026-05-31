@@ -29,8 +29,10 @@ public class VoucherProcessingService {
             BillerooConfirmResponse billerooResp = billerooClient.confirmPayment(order);
 
             // Step 3: Update order
-            orderRepository.updateBillerooConfirmed(order.getId());
+            order.setBillerooConfirmed(true);
+            order.setBillerooConfirmedAt(java.time.LocalDateTime.now());
             order.setStatus("BILLEROO_CONFIRMED");
+            orderRepository.save(order);
 
             // Step 4: Generate vouchers
             int quantity = billerooResp.getData().getVoucherCount();
@@ -43,7 +45,8 @@ public class VoucherProcessingService {
             countVerifier.verifyCount(order);
 
             // Step 7: Complete
-            orderRepository.markCompleted(order.getId());
+            order.setStatus("COMPLETED");
+            orderRepository.save(order);
 
         } catch (Exception e) {
             log.error("[VOUCHER PROCESS] Failed for order {}: {}", order.getId(), e.getMessage());
