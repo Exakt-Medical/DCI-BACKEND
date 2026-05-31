@@ -75,7 +75,7 @@ public class VoucherTransferService {
         return voucherRepository.countByCurrentUserIdAndStatus(userId, status);
     }
 
-    // ✅ Paginated + searchable available vouchers
+
     public Page<VoucherTransferDTO> getAvailablePaginated(Long userId, int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return voucherRepository
@@ -90,7 +90,7 @@ public class VoucherTransferService {
         List<VoucherTransferEntity> toTransfer;
 
         if (request.getVoucherIds() != null && !request.getVoucherIds().isEmpty()) {
-            // ✅ Transfer specific vouchers by ID
+
             toTransfer = voucherRepository.findByIdInAndCurrentUserIdAndStatus(
                     request.getVoucherIds(), fromUserId, "AVAILABLE");
 
@@ -99,7 +99,7 @@ public class VoucherTransferService {
                         "Some vouchers are not available or do not belong to this user.");
             }
         } else {
-            // Fallback: transfer by quantity
+
             List<VoucherTransferEntity> available = voucherRepository
                     .findByCurrentUserIdAndStatus(fromUserId, "AVAILABLE");
 

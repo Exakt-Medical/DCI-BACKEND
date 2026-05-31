@@ -35,7 +35,7 @@ public class VoucherTransferController {
         return ResponseEntity.ok(voucherService.getByCurrentUser(userId));
     }
 
-    // ✅ Paginated + searchable available vouchers
+
     @GetMapping("/by-user/{userId}/available")
     @Operation(summary = "Get paginated available vouchers for a user with optional search")
     public ResponseEntity<Page<VoucherTransferDTO>> getAvailablePaginated(

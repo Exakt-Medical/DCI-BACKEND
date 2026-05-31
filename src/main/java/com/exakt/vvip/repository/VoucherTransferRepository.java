@@ -19,7 +19,7 @@ public interface VoucherTransferRepository extends JpaRepository<VoucherTransfer
     long countByCurrentUserIdAndStatus(Long currentUserId, String status);
     long countByCurrentUserId(Long currentUserId);
 
-    // ✅ Paginated + searchable by voucher code for available vouchers
+
     @Query("SELECT v FROM VoucherTransferEntity v WHERE v.currentUserId = :userId AND v.status = 'AVAILABLE' " +
             "AND (:search = '' OR LOWER(v.voucherCode) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<VoucherTransferEntity> findAvailableByUserIdPaginated(
@@ -27,7 +27,6 @@ public interface VoucherTransferRepository extends JpaRepository<VoucherTransfer
             @Param("search") String search,
             Pageable pageable);
 
-    // ✅ Fetch specific vouchers by IDs for transfer validation
     List<VoucherTransferEntity> findByIdInAndCurrentUserIdAndStatus(
             List<Long> ids, Long currentUserId, String status);
 }
