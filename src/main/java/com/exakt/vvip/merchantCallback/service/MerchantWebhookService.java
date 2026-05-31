@@ -1,6 +1,9 @@
 package com.exakt.vvip.merchantCallback.service;
 
+import com.exakt.vvip.merchantCallback.client.TlpeClient;
 import com.exakt.vvip.config.TlpeApiProperties;
+import com.exakt.vvip.entity.Orders;
+import com.exakt.vvip.repository.OrdersRepository;
 import com.exakt.vvip.merchantCallback.config.MerchantCallbackProperties;
 import com.exakt.vvip.merchantCallback.dto.BilleroConfirmResult;
 import com.exakt.vvip.merchantCallback.dto.MerchantCallbackResponse;
@@ -36,11 +39,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class MerchantWebhookService {
 
+    private final TlpeClient tlpeClient;
     private final MerchantCallbackProperties properties;
     private final TlpeApiProperties tlpeApiProperties;
     private final BilleroVoucherService billeroVoucherService;
     private final ObjectMapper objectMapper;
     private final MerchantWebhookStreamService streamService;
+    private final OrdersRepository ordersRepository;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
 
@@ -56,24 +61,44 @@ public class MerchantWebhookService {
         registerWebhook(buildWebhookKey(webhookClaims.getJti(), transactionId));
 
         TransactionReport report = toTransactionReport(webhookClaims, claims);
-        BilleroConfirmResult confirmResult = confirmPayment(report);
-        
-        try {
-            System.out.println("Executing Billeroo Purchase Request for transaction: " + report.getTransactionId());
-            var purchaseResult = billeroVoucherService.createPurchaseRequest(report);
-            System.out.println("Purchase Request Result: Success=" + purchaseResult.isSuccess() + ", Message=" + purchaseResult.getMessage());
-        } catch (Exception ex) {
-            System.err.println("Failed to execute Billeroo Purchase Request for transaction: " + report.getTransactionId());
-            ex.printStackTrace();
+
+        // ── Step 2: set PAYMENT_VERIFYING (idempotency guard: only if PENDING_PAYMENT) ──
+        String merchantRef = report.getMerchantReference();
+        Orders order = findOrderByRef(merchantRef);
+        if (order != null) {
+            if ("PENDING_PAYMENT".equals(order.getStatus())) {
+                order.setTlpeTransactionId(report.getTransactionId());
+                order.setStatus("PAYMENT_VERIFYING");
+                ordersRepository.save(order);
+                System.out.println("Order " + order.getId() + " → PAYMENT_VERIFYING");
+            } else {
+                System.out.println("Order " + order.getId() + " skipped PAYMENT_VERIFYING update (current status=" + order.getStatus() + ")");
+            }
         }
-        
+
+        // ── Step 3: Billeroo confirm (best-effort) + set PAYMENT_CONFIRMED ───
+        // PAYMENT_CONFIRMED is gated on OK.00.00 status from TLPE, NOT on Billeroo success.
+        BilleroConfirmResult confirmResult = confirmPayment(report);
+        if (order != null && report.isSuccess() && "PAYMENT_VERIFYING".equals(order.getStatus())) {
+            java.math.BigDecimal processingFee = report.getProcessingFee() != null
+                    ? report.getProcessingFee() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal totalCharged = order.getOriginalAmount().add(processingFee);
+
+            order.setPaymentReference(report.getPaymentReference());
+            order.setProcessingFee(processingFee);
+            order.setTotalCharged(totalCharged);
+            order.setStatus("PAYMENT_CONFIRMED");
+            ordersRepository.save(order);
+            System.out.println("Order " + order.getId() + " → PAYMENT_CONFIRMED, processingFee=" + processingFee);
+        }
+
         PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, confirmResult);
 
         MerchantCallbackResponse response = MerchantCallbackResponse.builder()
                 .success(true)
                 .message("Merchant webhook processed successfully")
                 .data(summary)
-            .build();
+                .build();
 
         streamService.publish(transactionId, response);
 
@@ -86,6 +111,13 @@ public class MerchantWebhookService {
         } catch (MerchantCallbackException exception) {
             return null;
         }
+    }
+
+    private Orders findOrderByRef(String merchantRef) {
+        if (merchantRef == null || merchantRef.isBlank()) {
+            return null;
+        }
+        return ordersRepository.findByMerchantReferenceId(merchantRef).orElse(null);
     }
 
     private void validateAuthorizationHeader(String authorizationHeader) {
@@ -321,6 +353,7 @@ public class MerchantWebhookService {
         String companyName = customParameters == null ? null : customParameters.getCompanyName();
         Integer voucherCount = customParameters == null ? null : customParameters.getVoucherCount();
         BigDecimal voucherFee = customParameters == null ? null : customParameters.getVoucherFee();
+        BigDecimal processingFee = customParameters == null ? null : customParameters.getEplAddOnFee();
         String statusCode = result == null ? null : result.getStatusCode();
         String voucherDescription = result == null ? null : result.getMessage();
         String message = result == null ? null : result.getMessage();
@@ -335,6 +368,7 @@ public class MerchantWebhookService {
                 .success(isSuccessfulStatus(statusCode, message))
                 .transactionId(TransactionIdValidator.normalize(data.getTransactionId()))
                 .amountPaid(amountPaid)
+                .processingFee(processingFee)
                 .merchantReference(merchantReference)
                 .paymentReference(paymentReference)
                 .companyCode(companyCode)
@@ -363,8 +397,9 @@ public class MerchantWebhookService {
     }
 
     private String resolvePaymentReference(MerchantWebhookClaims.Payment payment, String transactionId) {
-        if (StringUtils.hasText(transactionId)) {
-            return transactionId;
+        // Martin.md: payment_reference = processor_reference_id from TLPE (e.g. 8ac7a4a19e771a1b019e77b7f5550cbb)
+        if (payment != null && StringUtils.hasText(payment.getProcessorReferenceId())) {
+            return payment.getProcessorReferenceId();
         }
 
         if (payment == null) {
@@ -385,7 +420,8 @@ public class MerchantWebhookService {
             }
         }
 
-        return null;
+        // Fall back to transactionId only if nothing else is available
+        return StringUtils.hasText(transactionId) ? transactionId : null;
     }
 
     private boolean isSuccessfulStatus(String statusCode, String message) {

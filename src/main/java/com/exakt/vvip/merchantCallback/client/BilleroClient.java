@@ -9,6 +9,7 @@ import com.exakt.vvip.merchantCallback.exception.MerchantCallbackException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -18,10 +19,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 
+@Slf4j
 @Component
 public class BilleroClient {
 
@@ -41,42 +44,64 @@ public class BilleroClient {
     }
 
     public BilleroConfirmResult confirmPayment(BilleroConfirmRequest request) {
+        String url = buildUrl(CONFIRM_PAYMENT_PATH);
+        log.info("Billero confirmPayment → POST {} | payload={}", url, request);
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    buildUrl(CONFIRM_PAYMENT_PATH),
+                    url,
                     HttpMethod.POST,
                     new HttpEntity<>(request, createHeaders(properties.getBilleroToken())),
                     String.class);
 
+            log.info("Billero confirmPayment ← HTTP {} | body={}", response.getStatusCode().value(), response.getBody());
             return buildResult(response.getBody(), response.getStatusCode().value(), false);
         } catch (HttpStatusCodeException exception) {
+            log.warn("Billero confirmPayment ← HTTP {} | body={}",
+                    exception.getStatusCode().value(), exception.getResponseBodyAsString());
             if (exception.getStatusCode().value() == 422) {
                 return buildResult(exception.getResponseBodyAsString(), 422, true);
             }
 
             throw new MerchantCallbackException(resolveStatus(exception),
                     "billero_request_failed",
-                    "Failed to confirm payment with Billero",
+                    "Failed to confirm payment with Billero [HTTP " + exception.getStatusCode().value() + "]",
                     exception.getResponseBodyAsString(),
                     exception);
+        } catch (ResourceAccessException exception) {
+            log.error("Billero confirmPayment — network unreachable: {}", exception.getMessage());
+            throw new MerchantCallbackException(org.springframework.http.HttpStatus.BAD_GATEWAY,
+                    "billero_unreachable",
+                    "Billero API is unreachable: " + exception.getMessage(),
+                    null, exception);
         }
     }
 
     public BilleroPurchaseResult createPurchaseRequest(BilleroPurchaseRequest request) {
+        String url = buildUrl(PURCHASE_REQUEST_PATH);
+        log.info("Billero createPurchaseRequest → POST {} | payload={}", url, request);
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    buildUrl(PURCHASE_REQUEST_PATH),
+                    url,
                     HttpMethod.POST,
                     new HttpEntity<>(request, createHeaders(properties.getBilleroToken())),
                     String.class);
 
+            log.info("Billero createPurchaseRequest ← HTTP {} | body={}", response.getStatusCode().value(), response.getBody());
             return buildPurchaseResult(response.getBody(), response.getStatusCode().value());
         } catch (HttpStatusCodeException exception) {
+            log.warn("Billero createPurchaseRequest ← HTTP {} | body={}",
+                    exception.getStatusCode().value(), exception.getResponseBodyAsString());
             throw new MerchantCallbackException(resolveStatus(exception),
                     "billero_purchase_request_failed",
-                    "Failed to create purchase request with Billero",
+                    "Failed to create purchase request with Billero [HTTP " + exception.getStatusCode().value() + "]",
                     exception.getResponseBodyAsString(),
                     exception);
+        } catch (ResourceAccessException exception) {
+            log.error("Billero createPurchaseRequest — network unreachable: {}", exception.getMessage());
+            throw new MerchantCallbackException(org.springframework.http.HttpStatus.BAD_GATEWAY,
+                    "billero_unreachable",
+                    "Billero API is unreachable: " + exception.getMessage(),
+                    null, exception);
         }
     }
 
@@ -88,8 +113,12 @@ public class BilleroClient {
                     "Billero API base URL is not configured");
         }
 
-        if (baseUrl.endsWith(path)) {
-            return baseUrl;
+        // Strip any /voucher/... suffix accidentally included in the configured base URL.
+        // e.g. https://test-edc-api.billeroo.com/voucher/confirm-payment
+        //   -> https://test-edc-api.billeroo.com
+        int voucherIndex = baseUrl.indexOf("/voucher/");
+        if (voucherIndex != -1) {
+            baseUrl = baseUrl.substring(0, voucherIndex);
         }
 
         return baseUrl + path;

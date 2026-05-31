@@ -115,6 +115,8 @@ public class MerchantWebhookClaims {
         private String option;
         @JsonProperty("merchant_reference_id")
         private String merchantReferenceId;
+        @JsonProperty("processor_reference_id")
+        private String processorReferenceId;
         @JsonProperty("other_references")
         private List<String> otherReferences;
     }
@@ -159,5 +161,7 @@ public class MerchantWebhookClaims {
         private Integer voucherCount;
         @JsonProperty("voucher_fee")
         private BigDecimal voucherFee;
+        @JsonProperty("epl_add_on_fee")
+        private BigDecimal eplAddOnFee;
     }
 }
