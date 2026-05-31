@@ -111,11 +111,11 @@ public class VoucherTransferService {
         List<VoucherTransferLog> logs = transferLogRepository
                 .findByFromUserIdOrderByTransferredAtDesc(fromUserId);
 
-        // Group logs by referenceNumber — each group = one transfer batch
+        
         Map<String, List<VoucherTransferLog>> grouped = logs.stream()
                 .collect(Collectors.groupingBy(VoucherTransferLog::getReferenceNumber));
 
-        // Preserve descending order via the distinct reference numbers from the sorted list
+
         return logs.stream()
                 .map(VoucherTransferLog::getReferenceNumber)
                 .distinct()
@@ -169,20 +169,20 @@ public class VoucherTransferService {
                     .collect(Collectors.toList());
         }
 
-        // Look up agent name once — stored in every log row so history needs no join
+
         User agent = userRepository.findById(request.getToUserId())
                 .orElseThrow(() -> new RuntimeException("Agent not found: " + request.getToUserId()));
 
         String toAgentName = ((agent.getFirstName() != null ? agent.getFirstName() : "") +
                 " " + (agent.getLastName() != null ? agent.getLastName() : "")).trim();
 
-        // One reference number for the entire batch
+
         String referenceNumber = "TRF-" + String.valueOf(System.currentTimeMillis()).substring(5);
 
         LocalDateTime now = LocalDateTime.now(MANILA);
 
         toTransfer.forEach(v -> {
-            // Option A: agent receives voucher as AVAILABLE — they can use it immediately
+
             v.setCurrentUserId(request.getToUserId());
             v.setStatus("AVAILABLE");
             v.setUpdatedAt(now);
@@ -190,7 +190,7 @@ public class VoucherTransferService {
 
         List<VoucherTransferEntity> saved = voucherRepository.saveAll(toTransfer);
 
-        // Log each voucher with agent name baked in — zero extra queries at history load time
+
         List<VoucherTransferLog> logs = saved.stream()
                 .map(v -> mapToLog(v, fromUserId, request.getToUserId(), toAgentName, referenceNumber))
                 .collect(Collectors.toList());
