@@ -73,4 +73,31 @@ public class BillerooClient {
 
         return response.getBody();
     }
+    public void syncCompany(com.exakt.vvip.entity.Company company) {
+        String url = billerooConfirmUrl.replace("/confirm-payment", "/company");
+
+        com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest payload = new com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest();
+        com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest.Data data = new com.exakt.vvip.generateVoucher.dto.BillerooCompanySyncRequest.Data();
+        data.setCode(company.getCode());
+        data.setEmail(company.getEmail());
+        data.setName(company.getCompanyName());
+        data.setStatus("ACTIVE".equals(company.getStatus()) ? 1 : 0);
+        
+        payload.setData(java.util.Collections.singletonList(data));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", billerooAuthToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url,
+                HttpMethod.PUT,
+                new HttpEntity<>(payload, headers),
+                String.class
+        );
+
+        if (response.getStatusCode() != HttpStatus.OK) {
+            throw new RuntimeException("Billeroo company sync failed for company: " + company.getCompanyName());
+        }
+    }
 }
