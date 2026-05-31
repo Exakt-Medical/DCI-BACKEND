@@ -37,6 +37,10 @@ public class Company {
     @Builder.Default
     private String status = "ACTIVE";
 
+    @Column(name = "available_vouchers", nullable = false)
+    @Builder.Default
+    private Integer availableVouchers = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userstamp")
     private User userstamp;

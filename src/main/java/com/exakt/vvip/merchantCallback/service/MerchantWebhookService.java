@@ -1,11 +1,7 @@
 package com.exakt.vvip.merchantCallback.service;
 
-import com.exakt.vvip.merchantCallback.client.TlpeClient;
 import com.exakt.vvip.config.TlpeApiProperties;
-import com.exakt.vvip.entity.Orders;
-import com.exakt.vvip.repository.OrdersRepository;
 import com.exakt.vvip.merchantCallback.config.MerchantCallbackProperties;
-import com.exakt.vvip.merchantCallback.dto.BilleroConfirmResult;
 import com.exakt.vvip.merchantCallback.dto.MerchantCallbackResponse;
 import com.exakt.vvip.merchantCallback.dto.MerchantWebhookClaims;
 import com.exakt.vvip.merchantCallback.dto.PaymentSummaryResponse;
@@ -39,13 +35,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class MerchantWebhookService {
 
-    private final TlpeClient tlpeClient;
     private final MerchantCallbackProperties properties;
     private final TlpeApiProperties tlpeApiProperties;
-    private final BilleroVoucherService billeroVoucherService;
     private final ObjectMapper objectMapper;
     private final MerchantWebhookStreamService streamService;
-    private final OrdersRepository ordersRepository;
+    private final MerchantCallbackService merchantCallbackService;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
 
@@ -62,37 +56,10 @@ public class MerchantWebhookService {
 
         TransactionReport report = toTransactionReport(webhookClaims, claims);
 
-        // ── Step 2: set PAYMENT_VERIFYING (idempotency guard: only if PENDING_PAYMENT) ──
-        String merchantRef = report.getMerchantReference();
-        Orders order = findOrderByRef(merchantRef);
-        if (order != null) {
-            if ("PENDING_PAYMENT".equals(order.getStatus())) {
-                order.setTlpeTransactionId(report.getTransactionId());
-                order.setStatus("PAYMENT_VERIFYING");
-                ordersRepository.save(order);
-                System.out.println("Order " + order.getId() + " → PAYMENT_VERIFYING");
-            } else {
-                System.out.println("Order " + order.getId() + " skipped PAYMENT_VERIFYING update (current status=" + order.getStatus() + ")");
-            }
-        }
+        // Update order status to PAYMENT_CONFIRMED using shared logic
+        merchantCallbackService.updateOrderFromReport(report);
 
-        // ── Step 3: Billeroo confirm (best-effort) + set PAYMENT_CONFIRMED ───
-        // PAYMENT_CONFIRMED is gated on OK.00.00 status from TLPE, NOT on Billeroo success.
-        BilleroConfirmResult confirmResult = confirmPayment(report);
-        if (order != null && report.isSuccess() && "PAYMENT_VERIFYING".equals(order.getStatus())) {
-            java.math.BigDecimal processingFee = report.getProcessingFee() != null
-                    ? report.getProcessingFee() : java.math.BigDecimal.ZERO;
-            java.math.BigDecimal totalCharged = order.getOriginalAmount().add(processingFee);
-
-            order.setPaymentReference(report.getPaymentReference());
-            order.setProcessingFee(processingFee);
-            order.setTotalCharged(totalCharged);
-            order.setStatus("PAYMENT_CONFIRMED");
-            ordersRepository.save(order);
-            System.out.println("Order " + order.getId() + " → PAYMENT_CONFIRMED, processingFee=" + processingFee);
-        }
-
-        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, confirmResult);
+        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, null);
 
         MerchantCallbackResponse response = MerchantCallbackResponse.builder()
                 .success(true)
@@ -105,20 +72,6 @@ public class MerchantWebhookService {
         return response;
     }
 
-    private BilleroConfirmResult confirmPayment(TransactionReport report) {
-        try {
-            return billeroVoucherService.confirmPayment(report);
-        } catch (MerchantCallbackException exception) {
-            return null;
-        }
-    }
-
-    private Orders findOrderByRef(String merchantRef) {
-        if (merchantRef == null || merchantRef.isBlank()) {
-            return null;
-        }
-        return ordersRepository.findByMerchantReferenceId(merchantRef).orElse(null);
-    }
 
     private void validateAuthorizationHeader(String authorizationHeader) {
         if (!StringUtils.hasText(authorizationHeader)) {
@@ -348,12 +301,11 @@ public class MerchantWebhookService {
 
         BigDecimal amountPaid = resolveAmount(payment, customParameters);
         String merchantReference = payment == null ? null : payment.getMerchantReferenceId();
-        String paymentReference = resolvePaymentReference(payment, data.getTransactionId());
+        String paymentReference = resolvePaymentReference(result);
         String companyCode = customParameters == null ? null : customParameters.getCompanyCode();
         String companyName = customParameters == null ? null : customParameters.getCompanyName();
         Integer voucherCount = customParameters == null ? null : customParameters.getVoucherCount();
         BigDecimal voucherFee = customParameters == null ? null : customParameters.getVoucherFee();
-        BigDecimal processingFee = customParameters == null ? null : customParameters.getEplAddOnFee();
         String statusCode = result == null ? null : result.getStatusCode();
         String voucherDescription = result == null ? null : result.getMessage();
         String message = result == null ? null : result.getMessage();
@@ -368,7 +320,6 @@ public class MerchantWebhookService {
                 .success(isSuccessfulStatus(statusCode, message))
                 .transactionId(TransactionIdValidator.normalize(data.getTransactionId()))
                 .amountPaid(amountPaid)
-                .processingFee(processingFee)
                 .merchantReference(merchantReference)
                 .paymentReference(paymentReference)
                 .companyCode(companyCode)
@@ -396,32 +347,11 @@ public class MerchantWebhookService {
         return BigDecimal.ZERO;
     }
 
-    private String resolvePaymentReference(MerchantWebhookClaims.Payment payment, String transactionId) {
-        // Martin.md: payment_reference = processor_reference_id from TLPE (e.g. 8ac7a4a19e771a1b019e77b7f5550cbb)
-        if (payment != null && StringUtils.hasText(payment.getProcessorReferenceId())) {
-            return payment.getProcessorReferenceId();
+    private String resolvePaymentReference(MerchantWebhookClaims.Result result) {
+        if (result != null && StringUtils.hasText(result.getProcessorReferenceId())) {
+            return result.getProcessorReferenceId();
         }
-
-        if (payment == null) {
-            return null;
-        }
-
-        List<String> candidates = new ArrayList<>();
-        if (payment.getOtherReferences() != null) {
-            candidates.addAll(payment.getOtherReferences());
-        }
-        if (StringUtils.hasText(payment.getMerchantReferenceId())) {
-            candidates.add(payment.getMerchantReferenceId());
-        }
-
-        for (String candidate : candidates) {
-            if (StringUtils.hasText(candidate)) {
-                return candidate;
-            }
-        }
-
-        // Fall back to transactionId only if nothing else is available
-        return StringUtils.hasText(transactionId) ? transactionId : null;
+        return "";
     }
 
     private boolean isSuccessfulStatus(String statusCode, String message) {

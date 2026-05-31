@@ -1,7 +1,6 @@
 package com.exakt.vvip.controller;
 
 import com.exakt.vvip.dto.InsuranceFeeResponse;
-import com.exakt.vvip.dto.ProcessOrderRequest;
 import com.exakt.vvip.dto.PurchaseRequest;
 import com.exakt.vvip.dto.PurchaseResponseDTO;
 import com.exakt.vvip.entity.InsuranceProduct;
@@ -73,12 +72,5 @@ public class VoucherController {
     public ResponseEntity<Map<String, String>> redeemVoucher(@RequestBody Map<String, String> body) {
         voucherService.redeemVoucher(body.get("voucherCode"));
         return ResponseEntity.ok(Map.of("message", "Voucher redeemed successfully"));
-    }
-
-    @PostMapping("/process")
-    @Operation(summary = "Process a PAYMENT_CONFIRMED order → Billeroo → voucher generation → COMPLETED")
-    public ResponseEntity<?> processOrder(@RequestBody ProcessOrderRequest request) {
-        PurchaseResponseDTO result = voucherService.processOrder(request.getOrderId());
-        return ResponseEntity.ok(result);
     }
 }

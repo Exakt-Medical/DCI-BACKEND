@@ -11,19 +11,21 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "orders")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class Orders {
+public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
-    @Column(name = "company_code", nullable = false, length = 30)
+    @Column(name = "company_code", length = 30, nullable = false)
     private String companyCode;
 
     @Column(name = "voucher_fee", nullable = false, precision = 12, scale = 2)
@@ -42,7 +44,7 @@ public class Orders {
     @Column(name = "total_charged", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalCharged;
 
-    @Column(name = "merchant_reference_id", nullable = false, length = 100)
+    @Column(name = "merchant_reference_id", length = 100, nullable = false)
     private String merchantReferenceId;
 
     @Column(name = "tlpe_transaction_id", length = 100)
@@ -51,16 +53,16 @@ public class Orders {
     @Column(name = "payment_reference", length = 255)
     private String paymentReference;
 
-    @Column(name = "status", nullable = false, length = 30)
-    @Builder.Default
-    private String status = "PENDING";
-
     @Column(name = "billeroo_confirmed", nullable = false)
     @Builder.Default
     private Boolean billerooConfirmed = false;
 
     @Column(name = "billeroo_confirmed_at")
     private LocalDateTime billerooConfirmedAt;
+
+    @Column(name = "status", length = 30, nullable = false)
+    @Builder.Default
+    private String status = "PENDING";
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -70,4 +72,3 @@ public class Orders {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }
-

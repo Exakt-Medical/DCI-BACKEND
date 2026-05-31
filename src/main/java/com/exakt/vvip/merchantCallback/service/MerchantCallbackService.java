@@ -1,8 +1,7 @@
 package com.exakt.vvip.merchantCallback.service;
 
-import com.exakt.vvip.entity.Orders;
-import com.exakt.vvip.repository.OrdersRepository;
-import com.exakt.vvip.merchantCallback.dto.BilleroConfirmResult;
+import com.exakt.vvip.entity.Order;
+import com.exakt.vvip.repository.OrderRepository;
 import com.exakt.vvip.merchantCallback.dto.MerchantCallbackResponse;
 import com.exakt.vvip.merchantCallback.dto.PaymentSummaryResponse;
 import com.exakt.vvip.merchantCallback.dto.TransactionReport;
@@ -21,34 +20,24 @@ import java.math.BigDecimal;
 public class MerchantCallbackService {
 
     private final TransactionVerificationService transactionVerificationService;
-    private final BilleroVoucherService billeroVoucherService;
-    private final OrdersRepository ordersRepository;
+    private final OrderRepository orderRepository;
 
     /**
      * Called by GET /payment-result (browser redirect) AND GET /summary/{transactionId}.
-     * Fetches the TLPE /report, updates order status in DB, then enriches the report
-     * with DB data before calling Billeroo so all required fields are present.
+     * Fetches the TLPE /report, updates order status in DB to PAYMENT_CONFIRMED.
+     * Billeroo confirmation is handled downstream by VoucherProcessingService.
      */
     @Transactional
     public MerchantCallbackResponse verifyAndConfirm(String transactionId) {
         TransactionReport report = transactionVerificationService.fetchReport(transactionId);
 
         // ── Update order in DB, get the matched order back ────────────────────
-        Orders order = updateOrderFromReport(report);
+        Order order = updateOrderFromReport(report);
 
         // ── Enrich report with order DB data (fills nulls TLPE /report omits) ─
         TransactionReport enrichedReport = enrichReportFromOrder(report, order);
 
-        // ── Best-effort Billeroo confirm ──────────────────────────────────────
-        BilleroConfirmResult confirmResult = null;
-        try {
-            confirmResult = billeroVoucherService.confirmPayment(enrichedReport);
-            log.info("Billeroo confirmPayment succeeded: success={}", confirmResult.isSuccess());
-        } catch (Exception ex) {
-            log.warn("Billeroo confirmPayment failed (non-fatal): {}", ex.getMessage());
-        }
-
-        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(enrichedReport, confirmResult);
+        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(enrichedReport, null);
 
         return MerchantCallbackResponse.builder()
                 .success(true)
@@ -61,22 +50,22 @@ public class MerchantCallbackService {
         return transactionVerificationService.fetchReport(transactionId);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+    // ── Package-visible: also called by MerchantWebhookService ───────────────
 
-    private Orders updateOrderFromReport(TransactionReport report) {
+    @Transactional
+    public Order updateOrderFromReport(TransactionReport report) {
         String merchantRef = report.getMerchantReference();
         String txnId = report.getTransactionId();
 
         log.debug("TLPE /report raw: {}", report.getRawResponse());
-        log.info("TLPE report → transactionId={}, merchantRef={}, statusCode={}, success={}",
-                txnId, merchantRef, report.getStatusCode(), report.isSuccess());
+        log.info("TLPE report → transactionId={}, merchantRef={}, statusCode={}, success={}", txnId, merchantRef, report.getStatusCode(), report.isSuccess());
 
-        Orders order = null;
+        Order order = null;
         if (StringUtils.hasText(merchantRef)) {
-            order = ordersRepository.findByMerchantReferenceId(merchantRef).orElse(null);
+            order = orderRepository.findByMerchantReferenceId(merchantRef).orElse(null);
         }
         if (order == null && StringUtils.hasText(txnId)) {
-            order = ordersRepository.findByTlpeTransactionId(txnId).orElse(null);
+            order = orderRepository.findByTlpeTransactionId(txnId).orElse(null);
             if (order != null) log.info("Order found via tlpe_transaction_id={}", txnId);
         }
         if (order == null) {
@@ -103,15 +92,17 @@ public class MerchantCallbackService {
             log.info("Order {} → PAYMENT_CONFIRMED (via /report), processingFee={}", order.getId(), processingFee);
         }
 
-        ordersRepository.save(order);
+        orderRepository.save(order);
         return order;
     }
 
+    // ── Private helpers ───────────────────────────────────────────────────────
+
     /**
      * Fills null fields in the TLPE report using the order's stored DB values.
-     * Ensures Billeroo always receives voucherCount, voucherFee, companyCode etc.
+     * Ensures downstream services always receive voucherCount, voucherFee, companyCode etc.
      */
-    private TransactionReport enrichReportFromOrder(TransactionReport report, Orders order) {
+    private TransactionReport enrichReportFromOrder(TransactionReport report, Order order) {
         if (order == null) return report;
 
         return TransactionReport.builder()

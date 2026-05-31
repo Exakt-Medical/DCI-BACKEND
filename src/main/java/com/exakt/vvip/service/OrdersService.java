@@ -3,9 +3,11 @@ package com.exakt.vvip.service;
 import com.exakt.vvip.config.TlpeApiProperties;
 import com.exakt.vvip.dto.OrdersRequest;
 import com.exakt.vvip.dto.OrdersResponse;
-import com.exakt.vvip.entity.Orders;
+import com.exakt.vvip.entity.Company;
+import com.exakt.vvip.entity.Order;
 import com.exakt.vvip.entity.User;
-import com.exakt.vvip.repository.OrdersRepository;
+import com.exakt.vvip.repository.CompanyRepository;
+import com.exakt.vvip.repository.OrderRepository;
 import com.exakt.vvip.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,8 +38,9 @@ public class OrdersService {
     private final RestTemplate restTemplate;
     private final TlpeApiProperties props;
     private final ObjectMapper objectMapper;
-    private final OrdersRepository ordersRepository;
+    private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
 
     private static final DateTimeFormatter REF_FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -45,13 +48,15 @@ public class OrdersService {
     public OrdersService(@Qualifier("tlpeRestTemplate") RestTemplate restTemplate,
                          TlpeApiProperties props,
                          ObjectMapper objectMapper,
-                         OrdersRepository ordersRepository,
-                         UserRepository userRepository) {
+                         OrderRepository orderRepository,
+                         UserRepository userRepository,
+                         CompanyRepository companyRepository) {
         this.restTemplate = restTemplate;
         this.props = props;
         this.objectMapper = objectMapper;
-        this.ordersRepository = ordersRepository;
+        this.orderRepository = orderRepository;
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
     }
 
     @Transactional
@@ -63,6 +68,10 @@ public class OrdersService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new PaymentException("Authenticated user not found: " + username));
 
+        // ── Resolve company entity ────────────────────────────────────────────
+        Company company = companyRepository.findById(request.getCompanyId())
+                .orElseThrow(() -> new PaymentException("Company not found: " + request.getCompanyId()));
+
         // ── Generate unique merchant reference id ─────────────────────────────
         String merchantReferenceId = generateMerchantReferenceId();
 
@@ -72,9 +81,9 @@ public class OrdersService {
         BigDecimal originalAmount = voucherFee.multiply(BigDecimal.valueOf(voucherCount));
 
         // ── Insert order row as PENDING ───────────────────────────────────────
-        Orders order = Orders.builder()
-                .userId(user.getId())
-                .companyId(request.getCompanyId())
+        Order order = Order.builder()
+                .user(user)
+                .company(company)
                 .companyCode(request.getCompanyCode())
                 .voucherFee(voucherFee)
                 .voucherCount(voucherCount)
@@ -84,7 +93,7 @@ public class OrdersService {
                 .merchantReferenceId(merchantReferenceId)
                 .status("PENDING")
                 .build();
-        order = ordersRepository.save(order);
+        order = orderRepository.save(order);
         log.info("Order {} created (PENDING) for user {} ref={}", order.getId(), username, merchantReferenceId);
 
         // ── Inject merchant ref and auth key into TLPE payload ────────────────
@@ -101,7 +110,7 @@ public class OrdersService {
 
         // ── Update order to PENDING_PAYMENT ───────────────────────────────────
         order.setStatus("PENDING_PAYMENT");
-        ordersRepository.save(order);
+        orderRepository.save(order);
         log.info("Order {} updated to PENDING_PAYMENT, link generated", order.getId());
 
         return OrdersResponse.builder()
