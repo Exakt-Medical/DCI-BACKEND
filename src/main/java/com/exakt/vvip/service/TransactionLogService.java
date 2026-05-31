@@ -416,7 +416,7 @@ public class TransactionLogService {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {       
+            for (int j = 0; j < 4; j++) {           
                 int index = (int) (Math.random() * chars.length());
                 sb.append(chars.charAt(index));
             }
