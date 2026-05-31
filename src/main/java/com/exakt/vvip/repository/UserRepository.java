@@ -14,7 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByManagerId(Long managerId);
     List<User> findByRole(User.UserRole role);
 
-    // FIXED: Accept UserRole enum instead of String
+
     @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role")
     Long countByRole(@Param("role") User.UserRole role);
 }
