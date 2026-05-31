@@ -19,7 +19,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @SecurityRequirement(name = "Bearer Authentication")
 @Tag(name = "Payments", description = "TLPE payment link generation and storage")
-public class PaymentsController {   
+public class    PaymentsController {
 
     private final PaymentsService paymentsService;
 

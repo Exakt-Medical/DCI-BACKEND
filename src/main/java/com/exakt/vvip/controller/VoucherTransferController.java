@@ -1,5 +1,6 @@
 package com.exakt.vvip.controller;
 
+import com.exakt.vvip.dto.TransferHistoryDTO;
 import com.exakt.vvip.dto.VoucherTransferDTO;
 import com.exakt.vvip.dto.VoucherTransferRequest;
 import com.exakt.vvip.service.VoucherTransferService;
@@ -34,7 +35,6 @@ public class VoucherTransferController {
     public ResponseEntity<List<VoucherTransferDTO>> getByCurrentUser(@PathVariable Long userId) {
         return ResponseEntity.ok(voucherService.getByCurrentUser(userId));
     }
-
 
     @GetMapping("/by-user/{userId}/available")
     @Operation(summary = "Get paginated available vouchers for a user with optional search")
@@ -84,5 +84,12 @@ public class VoucherTransferController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/transfer/history/{fromUserId}")
+    @Operation(summary = "Get transfer history for a manager, grouped by transfer batch")
+    public ResponseEntity<List<TransferHistoryDTO>> getTransferHistory(
+            @PathVariable Long fromUserId) {
+        return ResponseEntity.ok(voucherService.getTransferHistory(fromUserId));
     }
 }

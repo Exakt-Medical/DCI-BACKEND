@@ -1,8 +1,13 @@
 package com.exakt.vvip.service;
 
+import com.exakt.vvip.dto.TransferHistoryDTO;
 import com.exakt.vvip.dto.VoucherTransferDTO;
 import com.exakt.vvip.dto.VoucherTransferRequest;
+import com.exakt.vvip.entity.User;
 import com.exakt.vvip.entity.VoucherTransferEntity;
+import com.exakt.vvip.entity.VoucherTransferLog;
+import com.exakt.vvip.repository.UserRepository;
+import com.exakt.vvip.repository.VoucherTransferLogRepository;
 import com.exakt.vvip.repository.VoucherTransferRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,9 +17,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZoneId;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,9 +28,13 @@ import java.util.stream.Collectors;
 public class VoucherTransferService {
 
     private final VoucherTransferRepository voucherRepository;
-    private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
+    private final VoucherTransferLogRepository transferLogRepository;
+    private final UserRepository userRepository;
 
-    // ─── Mapper ───────────────────────────────────────────────────────────────
+    private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
+    private static final long VOUCHER_VALUE = 60L;
+
+    // ─── Mappers ──────────────────────────────────────────────────────────────
 
     private VoucherTransferDTO mapToResponse(VoucherTransferEntity v) {
         return VoucherTransferDTO.builder()
@@ -44,6 +54,19 @@ public class VoucherTransferService {
                 .createdAt(v.getCreatedAt() != null ? v.getCreatedAt().toString() : null)
                 .updatedAt(v.getUpdatedAt() != null ? v.getUpdatedAt().toString() : null)
                 .expiresAt(v.getExpiresAt() != null ? v.getExpiresAt().toString() : null)
+                .build();
+    }
+
+    private VoucherTransferLog mapToLog(VoucherTransferEntity v, Long fromUserId,
+                                        Long toUserId, String toAgentName,
+                                        String referenceNumber) {
+        return VoucherTransferLog.builder()
+                .fromUserId(fromUserId)
+                .toUserId(toUserId)
+                .toAgentName(toAgentName)
+                .voucherId(v.getId())
+                .voucherCode(v.getVoucherCode())
+                .referenceNumber(referenceNumber)
                 .build();
     }
 
@@ -75,12 +98,46 @@ public class VoucherTransferService {
         return voucherRepository.countByCurrentUserIdAndStatus(userId, status);
     }
 
-
     public Page<VoucherTransferDTO> getAvailablePaginated(Long userId, int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return voucherRepository
                 .findAvailableByUserIdPaginated(userId, search == null ? "" : search, pageable)
                 .map(this::mapToResponse);
+    }
+
+    // ─── Transfer History ─────────────────────────────────────────────────────
+
+    public List<TransferHistoryDTO> getTransferHistory(Long fromUserId) {
+        List<VoucherTransferLog> logs = transferLogRepository
+                .findByFromUserIdOrderByTransferredAtDesc(fromUserId);
+
+        // Group logs by referenceNumber — each group = one transfer batch
+        Map<String, List<VoucherTransferLog>> grouped = logs.stream()
+                .collect(Collectors.groupingBy(VoucherTransferLog::getReferenceNumber));
+
+        // Preserve descending order via the distinct reference numbers from the sorted list
+        return logs.stream()
+                .map(VoucherTransferLog::getReferenceNumber)
+                .distinct()
+                .map(ref -> {
+                    List<VoucherTransferLog> batch = grouped.get(ref);
+                    VoucherTransferLog first = batch.get(0);
+                    int quantity = batch.size();
+                    return TransferHistoryDTO.builder()
+                            .referenceNumber(ref)
+                            .fromUserId(first.getFromUserId())
+                            .toUserId(first.getToUserId())
+                            .toAgentName(first.getToAgentName())
+                            .quantity(quantity)
+                            .totalValue(quantity * VOUCHER_VALUE)
+                            .voucherCodes(batch.stream()
+                                    .map(VoucherTransferLog::getVoucherCode)
+                                    .collect(Collectors.toList()))
+                            .transferredAt(first.getTransferredAt().toString())
+                            .status("Completed")
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     // ─── Transfer ─────────────────────────────────────────────────────────────
@@ -90,7 +147,6 @@ public class VoucherTransferService {
         List<VoucherTransferEntity> toTransfer;
 
         if (request.getVoucherIds() != null && !request.getVoucherIds().isEmpty()) {
-
             toTransfer = voucherRepository.findByIdInAndCurrentUserIdAndStatus(
                     request.getVoucherIds(), fromUserId, "AVAILABLE");
 
@@ -99,7 +155,6 @@ public class VoucherTransferService {
                         "Some vouchers are not available or do not belong to this user.");
             }
         } else {
-
             List<VoucherTransferEntity> available = voucherRepository
                     .findByCurrentUserIdAndStatus(fromUserId, "AVAILABLE");
 
@@ -114,13 +169,35 @@ public class VoucherTransferService {
                     .collect(Collectors.toList());
         }
 
+        // Look up agent name once — stored in every log row so history needs no join
+        User agent = userRepository.findById(request.getToUserId())
+                .orElseThrow(() -> new RuntimeException("Agent not found: " + request.getToUserId()));
+
+        String toAgentName = ((agent.getFirstName() != null ? agent.getFirstName() : "") +
+                " " + (agent.getLastName() != null ? agent.getLastName() : "")).trim();
+
+        // One reference number for the entire batch
+        String referenceNumber = "TRF-" + String.valueOf(System.currentTimeMillis()).substring(5);
+
+        LocalDateTime now = LocalDateTime.now(MANILA);
+
         toTransfer.forEach(v -> {
+            // Option A: agent receives voucher as AVAILABLE — they can use it immediately
             v.setCurrentUserId(request.getToUserId());
-            v.setStatus("TRANSFERRED");
-            v.setUpdatedAt(LocalDateTime.now(MANILA));
+            v.setStatus("AVAILABLE");
+            v.setUpdatedAt(now);
         });
 
-        return voucherRepository.saveAll(toTransfer).stream()
+        List<VoucherTransferEntity> saved = voucherRepository.saveAll(toTransfer);
+
+        // Log each voucher with agent name baked in — zero extra queries at history load time
+        List<VoucherTransferLog> logs = saved.stream()
+                .map(v -> mapToLog(v, fromUserId, request.getToUserId(), toAgentName, referenceNumber))
+                .collect(Collectors.toList());
+
+        transferLogRepository.saveAll(logs);
+
+        return saved.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
