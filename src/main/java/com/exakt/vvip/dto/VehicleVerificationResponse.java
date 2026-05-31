@@ -47,7 +47,7 @@ public class VehicleVerificationResponse {
 
     private String issuedDate;
     private String issuer;
-
+    private String companyName;
     private String premiumType;
 
     // -------------------------------------------------------------------------
@@ -99,11 +99,12 @@ public class VehicleVerificationResponse {
     // -------------------------------------------------------------------------
     // STEP 2 success: ConfirmRequest succeeded, certificate issued
     // -------------------------------------------------------------------------
-    public static VehicleVerificationResponse confirmed(String referenceNo, String certNo) {
+    public static VehicleVerificationResponse confirmed(String referenceNo, String certNo, String companyName) {
         VehicleVerificationResponse r = new VehicleVerificationResponse();
         r.referenceNo        = referenceNo;
         r.verificationStatus = "COMPLETED";
         r.certificateNo      = certNo;
+        r.companyName        = companyName;
         r.processedAt        = LocalDateTime.now();
         return r;
     }
@@ -180,10 +181,9 @@ public class VehicleVerificationResponse {
         r.premiumType = cert.getPremiumType();
 
         // Cert metadata
-        r.issuedDate = cert.getDateCreated() != null ? cert.getDateCreated().toLocalDate().toString() : null;
-        r.issuer     = cert.getIssuerName() != null  ? cert.getIssuerName()
-                : cert.getCompanyName() != null  ? cert.getCompanyName()
-                : "PREMIER INSURANCE CORP.";
+        r.issuer = cert.getCompanyName() != null  ? cert.getCompanyName()
+                : cert.getIssuerName() != null    ? cert.getIssuerName()
+                : "-";
 
         return r;
     }

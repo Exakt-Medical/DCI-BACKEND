@@ -158,6 +158,14 @@ public class VerificationService {
             String certNo = dciCertificateService.issue(
                     record, request.getPremiumType(), userId, expiry);
 
+            String companyName = null;
+            try {
+                DciCertificate savedCert = dciCertificateRepo.findByCertificateNo(certNo).orElse(null);
+                if (savedCert != null) companyName = savedCert.getCompanyName();
+            } catch (Exception e) {
+                log.warn("Could not fetch companyName for certNo={}", certNo);
+            }
+
             String voucherCode = request.getVoucherCode();
             if (voucherCode != null && !voucherCode.isBlank()) {
                 try {
@@ -173,7 +181,7 @@ public class VerificationService {
             verificationRepo.save(record);
 
             log.info("CONFIRMED referenceNo={} certNo={}", record.getReferenceNo(), certNo);
-            return VehicleVerificationResponse.confirmed(record.getReferenceNo(), certNo);
+            return VehicleVerificationResponse.confirmed(record.getReferenceNo(), certNo, companyName);
 
         } catch (VvsApiClient.VvsApiException e) {
             log.error("ConfirmRequest failed referenceNo={}: {}", record.getReferenceNo(), e.getMessage());
