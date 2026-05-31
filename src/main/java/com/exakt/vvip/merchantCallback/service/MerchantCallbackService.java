@@ -1,6 +1,7 @@
 package com.exakt.vvip.merchantCallback.service;
 
 import com.exakt.vvip.entity.Order;
+import com.exakt.vvip.generateVoucher.service.VoucherProcessingService;
 import com.exakt.vvip.repository.OrderRepository;
 import com.exakt.vvip.merchantCallback.dto.MerchantCallbackResponse;
 import com.exakt.vvip.merchantCallback.dto.PaymentSummaryResponse;
@@ -21,6 +22,7 @@ public class MerchantCallbackService {
 
     private final TransactionVerificationService transactionVerificationService;
     private final OrderRepository orderRepository;
+    private final VoucherProcessingService voucherProcessingService;
 
     /**
      * Called by GET /payment-result (browser redirect) AND GET /summary/{transactionId}.
@@ -93,6 +95,20 @@ public class MerchantCallbackService {
         }
 
         orderRepository.save(order);
+
+        // Auto-trigger voucher generation after PAYMENT_CONFIRMED
+        if ("PAYMENT_CONFIRMED".equals(order.getStatus())
+                && !Boolean.TRUE.equals(order.getBillerooConfirmed())) {
+            try {
+                log.info("Order {} → Auto-triggering voucher processing...", order.getId());
+                voucherProcessingService.process(order);
+                log.info("Order {} → Voucher processing completed successfully.", order.getId());
+            } catch (Exception e) {
+                log.error("Order {} → Voucher processing FAILED: {}. Order stays PAYMENT_CONFIRMED for retry.",
+                        order.getId(), e.getMessage());
+            }
+        }
+
         return order;
     }
 

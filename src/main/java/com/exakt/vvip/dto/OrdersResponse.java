@@ -12,6 +12,9 @@ public class OrdersResponse {
     @JsonProperty("merchant_reference_id")
     private String merchantReferenceId;
 
+    @JsonProperty("invoice_reference")
+    private String invoiceReference;
+
     private String link;
 
     private String status;

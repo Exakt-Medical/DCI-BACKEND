@@ -15,6 +15,9 @@ public class Company {
     @Column(name = "company_name", length = 500)
     private String companyName;
 
+    @Column(length = 255)
+    private String email;
+
     @Column(name = "code", length = 100, unique = true)
     @Builder.Default
     private String code = "";
