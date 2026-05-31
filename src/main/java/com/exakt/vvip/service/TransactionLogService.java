@@ -423,5 +423,5 @@ public class TransactionLogService {
             if (i < 3) sb.append("-");
         }
         return sb.toString();
-    }
+    }   
 }
