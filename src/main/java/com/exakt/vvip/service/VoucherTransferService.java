@@ -5,6 +5,10 @@ import com.exakt.vvip.dto.VoucherTransferRequest;
 import com.exakt.vvip.entity.VoucherTransferEntity;
 import com.exakt.vvip.repository.VoucherTransferRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,25 +75,44 @@ public class VoucherTransferService {
         return voucherRepository.countByCurrentUserIdAndStatus(userId, status);
     }
 
+    // ✅ Paginated + searchable available vouchers
+    public Page<VoucherTransferDTO> getAvailablePaginated(Long userId, int page, int size, String search) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return voucherRepository
+                .findAvailableByUserIdPaginated(userId, search == null ? "" : search, pageable)
+                .map(this::mapToResponse);
+    }
+
     // ─── Transfer ─────────────────────────────────────────────────────────────
 
     @Transactional
     public List<VoucherTransferDTO> transfer(Long fromUserId, VoucherTransferRequest request) {
-        // Get available vouchers for the manager
-        List<VoucherTransferEntity> available = voucherRepository
-                .findByCurrentUserIdAndStatus(fromUserId, "AVAILABLE");
+        List<VoucherTransferEntity> toTransfer;
 
-        if (available.size() < request.getQuantity()) {
-            throw new RuntimeException(
-                    "Insufficient vouchers. Available: " + available.size() +
-                            ", Requested: " + request.getQuantity()
-            );
+        if (request.getVoucherIds() != null && !request.getVoucherIds().isEmpty()) {
+            // ✅ Transfer specific vouchers by ID
+            toTransfer = voucherRepository.findByIdInAndCurrentUserIdAndStatus(
+                    request.getVoucherIds(), fromUserId, "AVAILABLE");
+
+            if (toTransfer.size() != request.getVoucherIds().size()) {
+                throw new RuntimeException(
+                        "Some vouchers are not available or do not belong to this user.");
+            }
+        } else {
+            // Fallback: transfer by quantity
+            List<VoucherTransferEntity> available = voucherRepository
+                    .findByCurrentUserIdAndStatus(fromUserId, "AVAILABLE");
+
+            if (available.size() < request.getQuantity()) {
+                throw new RuntimeException(
+                        "Insufficient vouchers. Available: " + available.size() +
+                                ", Requested: " + request.getQuantity());
+            }
+
+            toTransfer = available.stream()
+                    .limit(request.getQuantity())
+                    .collect(Collectors.toList());
         }
-
-        // Take only the requested quantity and transfer
-        List<VoucherTransferEntity> toTransfer = available.stream()
-                .limit(request.getQuantity())
-                .collect(Collectors.toList());
 
         toTransfer.forEach(v -> {
             v.setCurrentUserId(request.getToUserId());

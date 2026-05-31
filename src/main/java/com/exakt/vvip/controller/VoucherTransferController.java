@@ -2,12 +2,12 @@ package com.exakt.vvip.controller;
 
 import com.exakt.vvip.dto.VoucherTransferDTO;
 import com.exakt.vvip.dto.VoucherTransferRequest;
-import com.exakt.vvip.service.VoucherService;
 import com.exakt.vvip.service.VoucherTransferService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +35,17 @@ public class VoucherTransferController {
         return ResponseEntity.ok(voucherService.getByCurrentUser(userId));
     }
 
+    // ✅ Paginated + searchable available vouchers
+    @GetMapping("/by-user/{userId}/available")
+    @Operation(summary = "Get paginated available vouchers for a user with optional search")
+    public ResponseEntity<Page<VoucherTransferDTO>> getAvailablePaginated(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @RequestParam(defaultValue = "") String search) {
+        return ResponseEntity.ok(voucherService.getAvailablePaginated(userId, page, size, search));
+    }
+
     @GetMapping("/by-user/{userId}/status/{status}")
     @Operation(summary = "Get vouchers by current user ID and status")
     public ResponseEntity<List<VoucherTransferDTO>> getByCurrentUserAndStatus(
@@ -59,7 +70,7 @@ public class VoucherTransferController {
     }
 
     @PostMapping("/transfer/from/{fromUserId}")
-    @Operation(summary = "Transfer vouchers from manager to agent")
+    @Operation(summary = "Transfer specific vouchers from manager to agent")
     public ResponseEntity<?> transfer(
             @PathVariable Long fromUserId,
             @RequestBody VoucherTransferRequest request) {
