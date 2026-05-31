@@ -2,10 +2,12 @@ package com.exakt.vvip.controller;
 
 import com.exakt.vvip.dto.VehicleVerificationRequest;
 import com.exakt.vvip.dto.VehicleVerificationResponse;
+import com.exakt.vvip.dto.VoucherValidateResponse;
 import com.exakt.vvip.dto.VvsLookupResponse;
 import com.exakt.vvip.security.UserDetailsImpl;
 import com.exakt.vvip.service.DciCertificateService;
 import com.exakt.vvip.service.VerificationService;
+import com.exakt.vvip.service.VoucherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +27,7 @@ public class VvipController {
 
     private final VerificationService   verificationService;
     private final DciCertificateService dciCertificateService;
+    private final VoucherService voucherService;
 
     @PostMapping("/verify")
     @Operation(summary = "Submit vehicle identifiers for VVS verification")
@@ -50,6 +53,23 @@ public class VvipController {
     @GetMapping("/certificate/{certNo}")
     public ResponseEntity<VehicleVerificationResponse> getByCertNo(@PathVariable String certNo) {
         return ResponseEntity.ok(verificationService.getByCertNo(certNo));
+    }
+
+    @PostMapping("/validate-voucher")
+    @Operation(summary = "Validate a voucher code before submitting final review")
+    public ResponseEntity<?> validateVoucher(@RequestBody java.util.Map<String, String> body) {
+        String voucherCode = body.get("voucherCode");
+        if (voucherCode == null || voucherCode.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", "voucherCode is required"));
+        }
+        try {
+            VoucherValidateResponse result = voucherService.validateVoucherByCode(voucherCode.toUpperCase());
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(java.util.Map.of("error", e.getMessage()));
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -26,6 +26,7 @@ public class VerificationService {
     private final VvsApiClient vvsApiClient;
     private final DciCertificateService dciCertificateService;
     private final DciCertificateRepository dciCertificateRepo;
+    private final VoucherService voucherService;
 
     @Transactional
     public VehicleVerificationResponse verify(VehicleVerificationRequest request, Long userId) {
@@ -156,6 +157,17 @@ public class VerificationService {
 
             String certNo = dciCertificateService.issue(
                     record, request.getPremiumType(), userId, expiry);
+
+            String voucherCode = request.getVoucherCode();
+            if (voucherCode != null && !voucherCode.isBlank()) {
+                try {
+                    voucherService.redeemVoucherByCode(voucherCode, certNo);
+                    log.info("Voucher redeemed — voucherCode={} certNo={}", voucherCode, certNo);
+                } catch (Exception e) {
+                    log.error("Voucher redeem failed (cert still issued) — voucherCode={} error={}",
+                            voucherCode, e.getMessage());
+                }
+            }
 
             record.setVerificationStatus(VerificationStatus.COMPLETED);
             verificationRepo.save(record);
