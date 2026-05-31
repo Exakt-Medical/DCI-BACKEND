@@ -6,7 +6,18 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface OrderRepository extends JpaRepository<Order, Long> {
+
+    Optional<Order> findByMerchantReferenceId(String merchantReferenceId);
+
+    Optional<Order> findByTlpeTransactionId(String tlpeTransactionId);
+
+    List<Order> findByStatus(String status);
+
+    List<Order> findByUser_Id(Long userId);
 
     @Modifying
     @Query("""

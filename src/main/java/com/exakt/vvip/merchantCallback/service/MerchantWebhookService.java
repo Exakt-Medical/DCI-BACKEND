@@ -2,7 +2,6 @@ package com.exakt.vvip.merchantCallback.service;
 
 import com.exakt.vvip.config.TlpeApiProperties;
 import com.exakt.vvip.merchantCallback.config.MerchantCallbackProperties;
-import com.exakt.vvip.merchantCallback.dto.BilleroConfirmResult;
 import com.exakt.vvip.merchantCallback.dto.MerchantCallbackResponse;
 import com.exakt.vvip.merchantCallback.dto.MerchantWebhookClaims;
 import com.exakt.vvip.merchantCallback.dto.PaymentSummaryResponse;
@@ -38,9 +37,9 @@ public class MerchantWebhookService {
 
     private final MerchantCallbackProperties properties;
     private final TlpeApiProperties tlpeApiProperties;
-    private final BilleroVoucherService billeroVoucherService;
     private final ObjectMapper objectMapper;
     private final MerchantWebhookStreamService streamService;
+    private final MerchantCallbackService merchantCallbackService;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
 
@@ -56,30 +55,23 @@ public class MerchantWebhookService {
         registerWebhook(buildWebhookKey(webhookClaims.getJti(), transactionId));
 
         TransactionReport report = toTransactionReport(webhookClaims, claims);
-        
-        // Removed silent call to Billeroo. TLPE webhook should just update orders,
-        // and hand off to /api/vouchers/process.
-        
+
+        // Update order status to PAYMENT_CONFIRMED using shared logic
+        merchantCallbackService.updateOrderFromReport(report);
+
         PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, null);
 
         MerchantCallbackResponse response = MerchantCallbackResponse.builder()
                 .success(true)
                 .message("Merchant webhook processed successfully")
                 .data(summary)
-            .build();
+                .build();
 
         streamService.publish(transactionId, response);
 
         return response;
     }
 
-    private BilleroConfirmResult confirmPayment(TransactionReport report) {
-        try {
-            return billeroVoucherService.confirmPayment(report);
-        } catch (MerchantCallbackException exception) {
-            return null;
-        }
-    }
 
     private void validateAuthorizationHeader(String authorizationHeader) {
         if (!StringUtils.hasText(authorizationHeader)) {

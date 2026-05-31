@@ -8,6 +8,7 @@ import com.exakt.vvip.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -45,9 +46,18 @@ public class VoucherProcessingService {
             orderRepository.markCompleted(order.getId());
 
         } catch (Exception e) {
-            orderRepository.markFailed(order.getId());
             log.error("[VOUCHER PROCESS] Failed for order {}: {}", order.getId(), e.getMessage());
+            markFailedInNewTransaction(order.getId());
             throw e;
         }
+    }
+
+    /**
+     * Runs in a separate transaction so the FAILED status is committed
+     * even when the caller's transaction rolls back due to the re-thrown exception.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markFailedInNewTransaction(Long orderId) {
+        orderRepository.markFailed(orderId);
     }
 }

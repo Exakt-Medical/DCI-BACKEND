@@ -4,8 +4,26 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class PaymentsRequest {
+public class OrdersRequest {
+
+    // ── Order row fields (written to `orders` table) ─────────────────────────
+
+    @JsonProperty("company_id")
+    private Long companyId;
+
+    @JsonProperty("company_code")
+    private String companyCode;
+
+    @JsonProperty("voucher_fee")
+    private BigDecimal voucherFee;
+
+    @JsonProperty("voucher_count")
+    private Integer voucherCount;
+
+    // ── TLPE payment-link payload ─────────────────────────────────────────────
 
     private Customer customer;
     private Payment payment;

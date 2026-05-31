@@ -105,14 +105,31 @@ public class TlpeClient {
             return TransactionReport.builder()
                     .success(true)
                     .transactionId(transactionId)
-                    .amountPaid(readBigDecimal(payload, root, "custom_parameters.original_amount", "payment.amount", "amount_paid", "amount", "total_amount"))
-                    .merchantReference(firstText(payload, root, "merchant_reference", "merchantReference", "reference", "merchant.ref"))
-                    .paymentReference(firstText(payload, root, "payment_reference", "paymentReference", "payment.reference", "reference_no"))
-                    .companyCode(firstText(payload, root, "company_code", "companyCode", "merchant.company_code", "custom_parameters.company_code"))
-                    .voucherCount(readInteger(payload, root, "voucher_count", "voucherCount", "custom_parameters.voucher_count"))
-                    .voucherFee(readBigDecimal(payload, root, "voucher_fee", "voucherFee", "custom_parameters.voucher_fee"))
-                    .statusCode(firstText(payload, root, "status_code", "statusCode", "payment.status_code", "status"))
-                    .voucherDescription(firstText(payload, root, "voucher_description", "voucherDescription", "description", "message"))
+                    .amountPaid(readBigDecimal(payload, root,
+                            "custom_parameters.original_amount", "payment.amount",
+                            "amount_paid", "amount", "total_amount"))
+                    .merchantReference(firstText(payload, root,
+                            "merchant_reference_id", "merchant_reference",
+                            "merchantReferenceId", "merchantReference",
+                            "payment.merchant_reference_id", "payment.merchantReferenceId",
+                            "reference", "merchant.ref"))
+                    .paymentReference(firstText(payload, root,
+                            "processor_reference_id", "processorReferenceId",
+                            "payment_reference", "paymentReference",
+                            "payment.processor_reference_id", "payment.reference",
+                            "reference_no"))
+                    .companyCode(firstText(payload, root,
+                            "company_code", "companyCode",
+                            "merchant.company_code", "custom_parameters.company_code"))
+                    .voucherCount(readInteger(payload, root,
+                            "voucher_count", "voucherCount", "custom_parameters.voucher_count"))
+                    .voucherFee(readBigDecimal(payload, root,
+                            "voucher_fee", "voucherFee", "custom_parameters.voucher_fee"))
+                    .statusCode(firstText(payload, root,
+                            "status_code", "statusCode", "payment.status_code",
+                            "result.statusCode", "status"))
+                    .voucherDescription(firstText(payload, root,
+                            "voucher_description", "voucherDescription", "description", "message"))
                     .message(firstText(payload, root, "message", "status_message"))
                     .rawResponse(root)
                     .build();

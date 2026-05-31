@@ -1,13 +1,18 @@
 package com.exakt.vvip.service;
 
-import com.exakt.vvip.dto.*;
-import com.exakt.vvip.entity.*;
-import com.exakt.vvip.repository.*;
+import com.exakt.vvip.dto.InsuranceFeeResponse;
+import com.exakt.vvip.dto.PurchaseResponseDTO;
+import com.exakt.vvip.entity.InsuranceFee;
+import com.exakt.vvip.entity.InsuranceProduct;
+import com.exakt.vvip.entity.Purchase;
+import com.exakt.vvip.entity.User;
+import com.exakt.vvip.repository.InsuranceFeeRepository;
+import com.exakt.vvip.repository.InsuranceProductRepository;
+import com.exakt.vvip.repository.PurchaseRepository;
+import com.exakt.vvip.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,8 +22,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class VoucherService {
 
-
-
     private final InsuranceProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
     private final UserRepository userRepository;
@@ -26,12 +29,9 @@ public class VoucherService {
 
     public List<InsuranceFeeResponse> getAllProducts() {
         List<InsuranceProduct> products = productRepository.findByIsActiveTrue();
-        return products.stream().map(p -> {
-            InsuranceFee fee = insuranceFeeRepository.findByInsuranceCode(p.getInsuranceCode()).orElse(null);
-            return InsuranceFeeResponse.builder()
-                    .insuranceCode(p.getInsuranceCode())
-                    .build();
-        }).collect(Collectors.toList());
+        return products.stream().map(p -> InsuranceFeeResponse.builder()
+                .insuranceCode(p.getInsuranceCode())
+                .build()).collect(Collectors.toList());
     }
 
     public List<InsuranceProduct> getProducts() {
@@ -45,10 +45,6 @@ public class VoucherService {
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-//        if (Boolean.FALSE.equals(user.getAllowedToBuyVoucher())) {
-//            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account does not have permission to purchase vouchers");
-//        }
 
         String policyNumber = "CTPL-" + java.time.Year.now().getValue() + "-" +
                 String.format("%06d", (int)(Math.random() * 1000000));
@@ -114,8 +110,7 @@ public class VoucherService {
     }
 
     public InsuranceFee getInsuranceFee(String insuranceCode) {
-        return insuranceFeeRepository.findByInsuranceCode(insuranceCode)
-                .orElse(null);
+        return insuranceFeeRepository.findByInsuranceCode(insuranceCode).orElse(null);
     }
 
     private PurchaseResponseDTO toDTO(Purchase p) {
