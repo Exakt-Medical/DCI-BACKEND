@@ -16,10 +16,10 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/vouchers")
+@RequestMapping("/api/voucher-transfer")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "Bearer Authentication")
-@Tag(name = "Vouchers", description = "Voucher Management Endpoints")
+@Tag(name = "Voucher Transfer", description = "Voucher Transfer Endpoints")
 public class VoucherTransferController {
 
     private final VoucherTransferService voucherService;
@@ -69,8 +69,14 @@ public class VoucherTransferController {
         ));
     }
 
+    @PostMapping("/count/batch")
+    @Operation(summary = "Batch count available vouchers for multiple users in one query")
+    public ResponseEntity<Map<Long, Long>> countBatch(@RequestBody List<Long> userIds) {
+        return ResponseEntity.ok(voucherService.countAvailableByUserIds(userIds));
+    }
+
     @PostMapping("/transfer/from/{fromUserId}")
-    @Operation(summary = "Transfer specific vouchers from manager to agent")
+    @Operation(summary = "Transfer vouchers from manager to agent")
     public ResponseEntity<?> transfer(
             @PathVariable Long fromUserId,
             @RequestBody VoucherTransferRequest request) {
@@ -87,7 +93,7 @@ public class VoucherTransferController {
     }
 
     @GetMapping("/transfer/history/{fromUserId}")
-    @Operation(summary = "Get transfer history for a manager, grouped by transfer batch")
+    @Operation(summary = "Get transfer history for a manager grouped by batch")
     public ResponseEntity<List<TransferHistoryDTO>> getTransferHistory(
             @PathVariable Long fromUserId) {
         return ResponseEntity.ok(voucherService.getTransferHistory(fromUserId));

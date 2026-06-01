@@ -19,7 +19,6 @@ public interface VoucherTransferRepository extends JpaRepository<VoucherTransfer
     long countByCurrentUserIdAndStatus(Long currentUserId, String status);
     long countByCurrentUserId(Long currentUserId);
 
-
     @Query("SELECT v FROM VoucherTransferEntity v WHERE v.currentUserId = :userId AND v.status = 'AVAILABLE' " +
             "AND (:search = '' OR LOWER(v.voucherCode) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<VoucherTransferEntity> findAvailableByUserIdPaginated(
@@ -29,4 +28,11 @@ public interface VoucherTransferRepository extends JpaRepository<VoucherTransfer
 
     List<VoucherTransferEntity> findByIdInAndCurrentUserIdAndStatus(
             List<Long> ids, Long currentUserId, String status);
+
+    // ✅ Batch count — one query for all agents instead of N individual queries
+    // Returns [currentUserId, availableCount] pairs for every userId in the list
+    @Query("SELECT v.currentUserId, COUNT(v) FROM VoucherTransferEntity v " +
+            "WHERE v.currentUserId IN :userIds AND v.status = 'AVAILABLE' " +
+            "GROUP BY v.currentUserId")
+    List<Object[]> countAvailableByUserIds(@Param("userIds") List<Long> userIds);
 }

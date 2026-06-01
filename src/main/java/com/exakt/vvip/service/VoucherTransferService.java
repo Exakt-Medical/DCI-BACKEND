@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -105,16 +106,27 @@ public class VoucherTransferService {
                 .map(this::mapToResponse);
     }
 
+    /**
+     * ✅ Batch count — returns { userId -> availableCount } map in a single DB query.
+     * Used by the frontend agents list to avoid N individual count calls.
+     */
+    public Map<Long, Long> countAvailableByUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Collections.emptyMap();
+        List<Object[]> rows = voucherRepository.countAvailableByUserIds(userIds);
+        return rows.stream().collect(Collectors.toMap(
+                row -> ((Number) row[0]).longValue(),
+                row -> ((Number) row[1]).longValue()
+        ));
+    }
+
     // ─── Transfer History ─────────────────────────────────────────────────────
 
     public List<TransferHistoryDTO> getTransferHistory(Long fromUserId) {
         List<VoucherTransferLog> logs = transferLogRepository
                 .findByFromUserIdOrderByTransferredAtDesc(fromUserId);
 
-        
         Map<String, List<VoucherTransferLog>> grouped = logs.stream()
                 .collect(Collectors.groupingBy(VoucherTransferLog::getReferenceNumber));
-
 
         return logs.stream()
                 .map(VoucherTransferLog::getReferenceNumber)
@@ -122,14 +134,14 @@ public class VoucherTransferService {
                 .map(ref -> {
                     List<VoucherTransferLog> batch = grouped.get(ref);
                     VoucherTransferLog first = batch.get(0);
-                    int quantity = batch.size();
+                    int qty = batch.size();
                     return TransferHistoryDTO.builder()
                             .referenceNumber(ref)
                             .fromUserId(first.getFromUserId())
                             .toUserId(first.getToUserId())
                             .toAgentName(first.getToAgentName())
-                            .quantity(quantity)
-                            .totalValue(quantity * VOUCHER_VALUE)
+                            .quantity(qty)
+                            .totalValue(qty * VOUCHER_VALUE)
                             .voucherCodes(batch.stream()
                                     .map(VoucherTransferLog::getVoucherCode)
                                     .collect(Collectors.toList()))
@@ -169,27 +181,22 @@ public class VoucherTransferService {
                     .collect(Collectors.toList());
         }
 
-
         User agent = userRepository.findById(request.getToUserId())
                 .orElseThrow(() -> new RuntimeException("Agent not found: " + request.getToUserId()));
 
         String toAgentName = ((agent.getFirstName() != null ? agent.getFirstName() : "") +
                 " " + (agent.getLastName() != null ? agent.getLastName() : "")).trim();
 
-
         String referenceNumber = "TRF-" + String.valueOf(System.currentTimeMillis()).substring(5);
-
         LocalDateTime now = LocalDateTime.now(MANILA);
 
         toTransfer.forEach(v -> {
-
             v.setCurrentUserId(request.getToUserId());
             v.setStatus("AVAILABLE");
             v.setUpdatedAt(now);
         });
 
         List<VoucherTransferEntity> saved = voucherRepository.saveAll(toTransfer);
-
 
         List<VoucherTransferLog> logs = saved.stream()
                 .map(v -> mapToLog(v, fromUserId, request.getToUserId(), toAgentName, referenceNumber))

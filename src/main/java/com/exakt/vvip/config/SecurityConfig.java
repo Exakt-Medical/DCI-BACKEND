@@ -66,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/merchant-callback/**").permitAll()
                         .requestMatchers("/api/vouchers/**").permitAll()
+                        .requestMatchers("/api/voucher-transfer/**").permitAll()
                         .requestMatchers("/billeroo/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/error").permitAll()
