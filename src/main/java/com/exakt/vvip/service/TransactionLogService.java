@@ -20,6 +20,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -45,6 +48,7 @@ public class TransactionLogService {
 
     // ==================== TRANSACTION LOGS METHODS ====================
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public Map<String, Object> getTransactionLogs(String status, String searchTerm, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
@@ -68,6 +72,7 @@ public class TransactionLogService {
 
     // ==================== DASHBOARD METHODS ====================
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public DashboardResponseDto getDashboardData(int page, int size) {
         // Get paginated transactions for recent transactions table
         Pageable pageable = PageRequest.of(page, size, Sort.by("dateCreated").descending());
@@ -110,6 +115,7 @@ public class TransactionLogService {
                 .build();
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getTotalAgents() {
         try {
             long agents = userRepository.countByRole(User.UserRole.AGENT);
@@ -121,6 +127,7 @@ public class TransactionLogService {
         }
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getLastWeekAuthenticatedCount() {
         try {
             LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
@@ -131,6 +138,7 @@ public class TransactionLogService {
         }
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getTodayAuthenticatedCount() {
         try {
             LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -144,6 +152,7 @@ public class TransactionLogService {
     /**
      * Get count of vouchers purchased today from the purchases table
      */
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getTodayPurchasedVouchersCount() {
         try {
             LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -167,6 +176,7 @@ public class TransactionLogService {
      * Get count of available vouchers from the vouchers table
      * Available vouchers = vouchers with status 'AVAILABLE' that are not expired
      */
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getAvailableVouchersCount() {
         try {
             LocalDateTime now = LocalDateTime.now();
@@ -187,6 +197,7 @@ public class TransactionLogService {
         }
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getAgentsCount() {
         try {
             return userRepository.countByRole(User.UserRole.AGENT);
@@ -196,6 +207,7 @@ public class TransactionLogService {
         }
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Long getSubagentsCount() {
         try {
             return userRepository.countByRole(User.UserRole.SUBAGENT);
@@ -205,6 +217,7 @@ public class TransactionLogService {
         }
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED, propagation = Propagation.REQUIRES_NEW)
     private RecentTransactionDto convertToRecentTransactionDtoFromEntity(VerificationRequest vr) {
         try {
             String account = "System";
@@ -224,14 +237,16 @@ public class TransactionLogService {
                         if (user.getBranch() != null) {
                             String comp = "";
                             try {
-                                if (user.getBranch().getCompany() != null) {
-                                    comp = user.getBranch().getCompany().getCompanyName();
+                                // Force initialize the proxy by accessing the getter
+                                com.exakt.vvip.entity.Branch branch = user.getBranch();
+                                if (branch.getCompany() != null) {
+                                    comp = branch.getCompany().getCompanyName();
                                 }
-                                if (user.getBranch().getBranchName() != null && !user.getBranch().getBranchName().isEmpty()) {
+                                if (branch.getBranchName() != null && !branch.getBranchName().isEmpty()) {
                                     if (!comp.isEmpty()) {
-                                        comp += " - " + user.getBranch().getBranchName();
+                                        comp += " - " + branch.getBranchName();
                                     } else {
-                                        comp = user.getBranch().getBranchName();
+                                        comp = branch.getBranchName();
                                     }
                                 }
                             } catch (Exception e) {
@@ -291,6 +306,7 @@ public class TransactionLogService {
         }
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private RecentTransactionDto convertToRecentTransactionDto(Object[] row) {
         Long id = ((Number) row[0]).longValue();
         String referenceNo = (String) row[1];
@@ -340,6 +356,7 @@ public class TransactionLogService {
                 .build();
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private TransactionLogDTO convertToDTO(Object[] row) {
         Long id = ((Number) row[0]).longValue();
         String referenceNo = (String) row[1];
@@ -404,6 +421,7 @@ public class TransactionLogService {
                 .build();
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     private Map<String, Long> getStatistics() {
         Map<String, Long> stats = new HashMap<>();
         stats.put("authenticated", verificationRepo.countAuthenticated());
@@ -416,7 +434,7 @@ public class TransactionLogService {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {           
+            for (int j = 0; j < 4; j++) {
                 int index = (int) (Math.random() * chars.length());
                 sb.append(chars.charAt(index));
             }
