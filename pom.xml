@@ -9,11 +9,11 @@
         <version>3.3.5</version>
         <relativePath/>
     </parent>
-    <groupId>com.exakt</groupId>
-    <artifactId>vvip</artifactId>
+    <groupId>com.dci</groupId>
+    <artifactId>clearance</artifactId>
     <version>1.0.0</version>
-    <name>EXAKT-VVIP</name>
-    <description>Vehicle Verification Insurance Program - Backend</description>
+    <name>DCI-CLEARANCE</name>
+    <description>DCI Clearance Verification System - Backend</description>
 
     <properties>
         <java.version>17</java.version>

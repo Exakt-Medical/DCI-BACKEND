@@ -61,7 +61,7 @@ sequenceDiagram
 ## Component Breakdown & Database Interactions
 
 ### Phase 1: The Payment Webhook
-**File:** [MerchantWebhookService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/merchantCallback/service/MerchantWebhookService.java)
+**File:** [MerchantWebhookService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/merchantCallback/service/MerchantWebhookService.java)
 
 When a user completes their payment on TLPE, TLPE fires a webhook payload to `/api/merchant-callback/webhook`. 
 - **What it used to do:** It used to silently call Billeroo's `/confirm-payment` API immediately upon receiving the webhook. 
@@ -73,8 +73,8 @@ When a user completes their payment on TLPE, TLPE fires a webhook payload to `/a
 ---
 
 ### Phase 2: Handoff to Voucher System
-**File:** [VoucherController.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/controller/VoucherController.java)
-**File:** [SecurityConfig.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/config/SecurityConfig.java)
+**File:** [VoucherController.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/controller/VoucherController.java)
+**File:** [SecurityConfig.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/config/SecurityConfig.java)
 
 Once your friend updates the database, they will trigger the voucher process by sending an HTTP POST request:
 `POST /api/vouchers/process`
@@ -84,19 +84,19 @@ Once your friend updates the database, they will trigger the voucher process by 
 ---
 
 ### Phase 3: The Transactional Processing Pipeline
-**File:** [VoucherProcessingService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/service/VoucherProcessingService.java)
+**File:** [VoucherProcessingService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/service/VoucherProcessingService.java)
 
 This is the brain of the operation. It runs inside a single `@Transactional` block. If *anything* fails (like a network timeout or a missing table), the database completely undoes everything back to the starting line.
 
 #### Step A: Confirm with Billeroo
-**File:** [BillerooClient.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/client/BillerooClient.java)
-We construct the payload (using [BillerooConfirmRequest](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/dto/BillerooConfirmRequest.java)) containing the original amount, voucher count, and the critical `payment_reference`. We send it to Billeroo. If Billeroo returns 200 OK, we update the order:
+**File:** [BillerooClient.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/client/BillerooClient.java)
+We construct the payload (using [BillerooConfirmRequest](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/dto/BillerooConfirmRequest.java)) containing the original amount, voucher count, and the critical `payment_reference`. We send it to Billeroo. If Billeroo returns 200 OK, we update the order:
 ```sql
 UPDATE orders SET billeroo_confirmed = 1, status = 'BILLEROO_CONFIRMED' WHERE id = ?
 ```
 
 #### Step B: Generate Vouchers
-**File:** [VoucherGeneratorService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/service/VoucherGeneratorService.java)
+**File:** [VoucherGeneratorService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/service/VoucherGeneratorService.java)
 We loop `N` times to generate `N` unique voucher strings formatted as `BLR-{companyCode}-{XXXX}-{XXXX}`. 
 - It actively queries the database `existsByVoucherCode(code)` to ensure no collision exists.
 - It saves these `N` vouchers to the `vouchers` table.
@@ -106,7 +106,7 @@ UPDATE companies SET available_vouchers = available_vouchers + N WHERE id = ?
 ```
 
 #### Step C: Verify External Count Sync
-**File:** [VoucherCountVerificationService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/service/VoucherCountVerificationService.java)
+**File:** [VoucherCountVerificationService.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/generateVoucher/service/VoucherCountVerificationService.java)
 We make a GET request to Billeroo to retrieve their exact count of `available` vouchers. We compare it to our local database's `companies.available_vouchers`.
 - We write this exact comparison into the `voucher_count_snapshots` audit table.
 
@@ -123,7 +123,7 @@ UPDATE orders SET status = 'COMPLETED' WHERE id = ?
 
 ### Phase 4: Database Entities Involved
 
-- [Order.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/entity/Order.java): Represents `dci_ctpl.orders`. The anchor for the entire flow.
-- [Voucher.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/entity/Voucher.java): Represents `dci_ctpl.vouchers`. Owns the unique code string, mapped directly to the `User` who bought it.
-- [VoucherCountSnapshot.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/entity/VoucherCountSnapshot.java): The audit log keeping track of external vs internal sync counts.
-- [Company.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/VVIP-BACKEND/src/main/java/com/exakt/vvip/entity/Company.java): Now has an `availableVouchers` integer that increments synchronously with generation.
+- [Order.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/entity/Order.java): Represents `dciclearance.orders`. The anchor for the entire flow.
+- [Voucher.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/entity/Voucher.java): Represents `dciclearance.vouchers`. Owns the unique code string, mapped directly to the `User` who bought it.
+- [VoucherCountSnapshot.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/entity/VoucherCountSnapshot.java): The audit log keeping track of external vs internal sync counts.
+- [Company.java](file:///c:/Users/Exakt%20Medical%2048/Documents/GitHub/DCI-BACKEND/src/main/java/com/exakt/vvip/entity/Company.java): Now has an `availableVouchers` integer that increments synchronously with generation.
