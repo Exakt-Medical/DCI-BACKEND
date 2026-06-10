@@ -1,6 +1,7 @@
 package com.dci.clearance.generateVoucher.client;
 
 import com.dci.clearance.entity.Order;
+import com.dci.clearance.merchantCallback.config.MerchantCallbackProperties;
 import com.dci.clearance.generateVoucher.dto.BillerooConfirmRequest;
 import com.dci.clearance.generateVoucher.dto.BillerooConfirmResponse;
 import com.dci.clearance.generateVoucher.dto.BillerooCountResponse;
@@ -21,15 +22,19 @@ import lombok.extern.slf4j.Slf4j;
 public class BillerooClient {
 
     private final RestTemplate restTemplate;
-    private final String billerooConfirmUrl;
+    private final String billerooBaseUrl;
     private final String billerooAuthToken;
 
     public BillerooClient(@Qualifier("merchantCallbackRestTemplate") RestTemplate restTemplate,
-                          @Value("${merchant-callback.billero-api-base-url}") String billerooConfirmUrl,
+                          MerchantCallbackProperties properties,
                           @Value("${merchant-callback.billero-token}") String billerooAuthToken) {
         this.restTemplate = restTemplate;
-        this.billerooConfirmUrl = billerooConfirmUrl;
+        this.billerooBaseUrl = properties.getBilleroBaseUrl();
         this.billerooAuthToken = billerooAuthToken;
+    }
+
+    private String buildUrl(String route) {
+        return java.net.URI.create(billerooBaseUrl).resolve(route).toString();
     }
 
     public BillerooConfirmResponse confirmPayment(Order order) {
@@ -49,7 +54,7 @@ public class BillerooClient {
 
         try {
             ResponseEntity<BillerooConfirmResponse> response = restTemplate.postForEntity(
-                    billerooConfirmUrl,
+                buildUrl("confirm-payment"),
                     new HttpEntity<>(payload, headers),
                     BillerooConfirmResponse.class
             );
@@ -105,7 +110,7 @@ public class BillerooClient {
     }
 
     public BillerooPurchaseResponse createPurchaseRequest(BillerooPurchaseRequest payload) {
-        String url = billerooConfirmUrl.replace("/confirm-payment", "/purchase-request");
+        String url = buildUrl("purchase-request");
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", billerooAuthToken);
@@ -126,8 +131,7 @@ public class BillerooClient {
     }
 
     public BillerooCountResponse getVoucherCount(String companyCode) {
-        String baseUrl = billerooConfirmUrl.replace("/confirm-payment", "/count");
-        String url = baseUrl + "?companyCode=" + companyCode; // Assuming query parameter, or could be /count/{companyCode}
+        String url = buildUrl("count") + "?companyCode=" + companyCode;
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", billerooAuthToken);
@@ -146,7 +150,7 @@ public class BillerooClient {
         return response.getBody();
     }
     public void syncCompany(Company company) {
-        String url = billerooConfirmUrl.replace("/confirm-payment", "/company");
+        String url = buildUrl("company");
 
         BillerooCompanySyncRequest payload = new BillerooCompanySyncRequest();
         BillerooCompanySyncRequest.Data data = new BillerooCompanySyncRequest.Data();

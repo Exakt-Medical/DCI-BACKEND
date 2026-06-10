@@ -11,7 +11,7 @@ public class MerchantCallbackProperties {
 
     private String tlpeApiBaseUrl;
     private String integratorToken;
-    private String billeroApiBaseUrl;
+    private String billeroBaseUrl;
     private String billeroToken;
     private String webhookSigningSecret;
     private String expectedIssuer = "TLPE";

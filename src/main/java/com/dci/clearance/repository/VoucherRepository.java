@@ -8,5 +8,6 @@ public interface
 VoucherRepository extends JpaRepository<Voucher, Long> {
     boolean existsByVoucherCode(String voucherCode);
     Optional<Voucher> findByVoucherCode(String voucherCode);
+    Optional<Voucher> findByVoucherReference(String voucherReference);
     long countByCurrentUserIdAndStatus(Long currentUserId, String status);
 }

@@ -1,9 +1,9 @@
 package com.dci.clearance.service;
 
+import com.dci.clearance.merchantCallback.config.MerchantCallbackProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -14,17 +14,24 @@ import java.net.http.HttpResponse;
 @Slf4j
 @Component
 public class BillerooRedeemClient {
-    @Value("${merchant-callback.billero-redeem-url}")
-    private String redeemUrl;
+    private final String billerooBaseUrl;
 
-    @Value("${merchant-callback.billero-token}")
     private String token;
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    public BillerooRedeemClient(MerchantCallbackProperties properties) {
+        this.billerooBaseUrl = properties.getBilleroBaseUrl();
+        this.token = properties.getBilleroToken();
+    }
+
+    private String buildUrl(String route) {
+        return URI.create(billerooBaseUrl).resolve(route).toString();
+    }
+
     public String redeem(String transactionReference, String companyCode) {
-        String url = redeemUrl;
+        String url = buildUrl("redeem");
         String body = String.format(
                 "{\"transactionReference\":\"%s\",\"companyCode\":\"%s\",\"voucherCount\":\"1\"}",
                 transactionReference, companyCode
