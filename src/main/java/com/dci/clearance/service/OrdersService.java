@@ -74,6 +74,15 @@ public class OrdersService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new PaymentException("Authenticated user not found: " + username));
 
+        // ── Billeroo sync guard (citizens only) ──────────────────────────────
+        if (user.getRole() == User.UserRole.CITIZEN
+                && !"SYNCED".equals(user.getBillerooSyncStatus())) {
+            String message = "DEAD".equals(user.getBillerooSyncStatus())
+                    ? "Your account setup could not be completed. Please contact support."
+                    : "Your account is not yet fully set up due to a server issue. Please try again later.";
+            throw new PaymentException(message);
+        }
+
         // ── Resolve company entity ────────────────────────────────────────────
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new PaymentException("Company not found: " + request.getCompanyId()));

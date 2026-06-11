@@ -12,6 +12,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsername(String username);
     List<User> findByRole(User.UserRole role);
 
+    boolean existsByCompanyCode(String companyCode);
+
+    List<User> findByBillerooSyncStatusIn(List<String> statuses);
+
+    List<User> findTop10ByBillerooSyncStatusInAndBillerooRetryCountLessThan(
+            List<String> statuses, int maxRetries);
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role")
     Long countByRole(@Param("role") User.UserRole role);

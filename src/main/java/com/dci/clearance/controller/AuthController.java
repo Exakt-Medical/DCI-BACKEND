@@ -1,22 +1,21 @@
 package com.dci.clearance.controller;
 
+import com.dci.clearance.dto.CitizenRegisterRequest;
 import com.dci.clearance.dto.LoginRequest;
 import com.dci.clearance.dto.LoginResponse;
-import com.dci.clearance.dto.RegisterRequest;
 import com.dci.clearance.entity.User;
-import com.dci.clearance.repository.UserRepository;
 import com.dci.clearance.service.AccessLogService;
-import com.dci.clearance.service.AccountSetupService;
 import com.dci.clearance.service.AuthService;
 import com.dci.clearance.service.AuditTrailService;
+import com.dci.clearance.service.CitizenRegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,9 +30,7 @@ public class AuthController {
     private final AuthService authService;
     private final AuditTrailService auditTrailService;
     private final AccessLogService accessLogService;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final AccountSetupService accountSetupService;
+    private final CitizenRegistrationService citizenRegistrationService;
 
     @PostMapping("/login")
     @Operation(summary = "Login with username and password", description = "Returns JWT token")
@@ -83,37 +80,20 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Register a new citizen account", description = "Creates a new user with CITIZEN role")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Username already exists"));
+    @Operation(summary = "Register a new citizen account", description = "Creates a new user with CITIZEN role and shadow company")
+    public ResponseEntity<?> register(@Valid @RequestBody CitizenRegisterRequest request) {
+        try {
+            User user = citizenRegistrationService.registerCitizen(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Registration successful",
+                    "username", user.getUsername(),
+                    "firstName", user.getFirstName(),
+                    "lastName", user.getLastName(),
+                    "email", user.getEmail(),
+                    "billerooSyncStatus", user.getBillerooSyncStatus()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        String password = request.getPassword();
-        if (password.length() < 8 ||
-                !password.matches(".*[A-Z].*") ||
-                !password.matches(".*[a-z].*") ||
-                !password.matches(".*\\d.*")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 8 characters and contain uppercase, lowercase, and a number"));
-        }
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(password))
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .email(request.getEmail())
-                .role(User.UserRole.CITIZEN)
-                .status("ACTIVE")
-                .build();
-        userRepository.save(user);
-        accountSetupService.setupCompanyAndBranch(user);
-        userRepository.save(user);
-        auditTrailService.logAction("Register", "Citizen registered: " + request.getUsername(), request.getUsername(), "CITIZEN");
-        return ResponseEntity.ok(Map.of(
-                "message", "Registration successful",
-                "username", request.getUsername(),
-                "firstName", request.getFirstName(),
-                "lastName", request.getLastName(),
-                "email", request.getEmail()
-        ));
     }
-}
+}

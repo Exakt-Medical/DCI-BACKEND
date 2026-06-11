@@ -44,6 +44,10 @@ public class Company {
     @Builder.Default
     private Integer availableVouchers = 0;
 
+    @Column(name = "billeroo_sync_status", length = 20, nullable = false)
+    @Builder.Default
+    private String billerooSyncStatus = "PENDING";
+
     @Column(name = "userstamp", length = 50)
     private String userstamp;
 }

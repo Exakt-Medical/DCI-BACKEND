@@ -45,6 +45,14 @@ public class User {
     @Builder.Default
     private String status = "ACTIVE";
 
+    @Column(name = "billeroo_sync_status", length = 20, nullable = false)
+    @Builder.Default
+    private String billerooSyncStatus = "PENDING";
+
+    @Column(name = "billeroo_retry_count", nullable = false)
+    @Builder.Default
+    private Integer billerooRetryCount = 0;
+
     @Column(name = "userstamp", length = 50)
     private String userstamp;
 
