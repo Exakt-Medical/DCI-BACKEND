@@ -22,7 +22,7 @@ public class VoucherProcessingService {
     private final VoucherCountVerificationService countVerifier;
     private final CompanyRepository companyRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void process(Order order) {
         try {
             // Step 2: Confirm with Billeroo
@@ -45,7 +45,7 @@ public class VoucherProcessingService {
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processPurchaseRequest(Order order, int quantity) {
         try {
             // Billeroo already confirmed via webhook

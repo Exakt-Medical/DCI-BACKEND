@@ -2,7 +2,9 @@ package com.dci.clearance.service;
 
 import com.dci.clearance.dto.LoginRequest;
 import com.dci.clearance.dto.LoginResponse;
+import com.dci.clearance.entity.Company;
 import com.dci.clearance.entity.User;
+import com.dci.clearance.repository.CompanyRepository;
 import com.dci.clearance.repository.UserRepository;
 import com.dci.clearance.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -15,11 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
-
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final CompanyRepository companyRepository;
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
@@ -35,6 +36,9 @@ public class AuthService {
         }
 
         String token = jwtUtils.generateToken(user.getUsername(), user.getRole().name());
+        Long companyId = companyRepository.findByCode(user.getCompanyCode())
+                .map(Company::getId)
+                .orElse(null);
 
         return LoginResponse.builder()
                 .userId(user.getId())
@@ -45,6 +49,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .companyCode(user.getCompanyCode())
+                .companyId(companyId)
                 .branchRef(user.getBranchRef())
                 .message("Login successful")
                 .build();
