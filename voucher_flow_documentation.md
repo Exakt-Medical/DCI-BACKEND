@@ -125,6 +125,8 @@ sequenceDiagram
    - `PAYMENT_CONFIRMED` when TLPE confirms success
    - `FAILED` when the report indicates failure
 5. If the order is `PAYMENT_CONFIRMED` and Billeroo has not yet been used, the service auto-triggers voucher generation by calling `VoucherProcessingService.process(order)`.
+6. The `process` method returns a `BilleroConfirmResult` detailing the success or failure from Billeroo.
+7. An `OrderUpdateResult` wraps both the TLPE report and the `BilleroConfirmResult`, which `MerchantCallbackMapper` uses to accurately map the `voucherStatusLabel` (e.g., "Voucher Generated Successfully", "Unable to confirm voucher", or "Voucher already processed").
 
 ### Billeroo invoice webhook path
 
@@ -264,3 +266,15 @@ If you want to trace the runtime behavior quickly, read these files in order:
 8. [CompanyService.java](src/main/java/com/dci/clearance/service/CompanyService.java)
 9. [VoucherService.java](src/main/java/com/dci/clearance/service/VoucherService.java)
 10. [BillerooRedeemClient.java](src/main/java/com/dci/clearance/service/BillerooRedeemClient.java)
+
+## 8. Known Gotchas and Fixes
+
+### Citizen Company Code Overwrite Bug
+- **Symptom**: A Citizen registers and gets a 3-character shadow company code (e.g., `T3Q`). Later, their company code unexpectedly changes to `CMP-XXXXXXXX`.
+- **Cause**: The `DataInitializer` loops over all users on application startup to ensure they have a `companyCode` and `branchRef`. Since Citizen shadow companies do not have branches (`branchRef` is null), the initializer falsely identified their profile as incomplete and overwrote their `companyCode` with a new `CMP-` code and generated a branch.
+- **Fix**: The condition in `DataInitializer` was updated to explicitly skip `CITIZEN` users if they already have a `companyCode`, ensuring their 3-character codes are preserved across backend restarts.
+
+### Hardcoded "Unable to confirm voucher" Label
+- **Symptom**: The frontend TLPE payment summary always displayed "Unable to confirm voucher" even if the voucher was successfully generated.
+- **Cause**: Previously, `MerchantCallbackService` mapped the TLPE report directly into the frontend response and passed `null` for the Billeroo status, falling back to a hardcoded failure string.
+- **Fix**: The service was refactored to return an `OrderUpdateResult` combining the TLPE report and the `BilleroConfirmResult` returned by `VoucherProcessingService.process(order)`. `MerchantCallbackMapper` now accurately maps the label to "Voucher Generated Successfully" or "Voucher already processed" based on Billeroo's actual response.

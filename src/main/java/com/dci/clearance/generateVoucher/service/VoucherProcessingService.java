@@ -23,7 +23,7 @@ public class VoucherProcessingService {
     private final CompanyRepository companyRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void process(Order order) {
+    public BillerooConfirmResponse process(Order order) {
         try {
             // Step 2: Confirm with Billeroo
             BillerooConfirmResponse billerooResp = billerooClient.confirmPayment(order);
@@ -38,6 +38,7 @@ public class VoucherProcessingService {
             int quantity = billerooResp.getData().getVoucherCount();
             generateAndComplete(order, quantity);
 
+            return billerooResp;
         } catch (Exception e) {
             log.error("[VOUCHER PROCESS] Failed for order {}: {}", order.getId(), e.getMessage());
             markFailedInNewTransaction(order.getId());

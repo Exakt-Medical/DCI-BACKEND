@@ -2,8 +2,11 @@ package com.dci.clearance.merchantCallback.service;
 
 import com.dci.clearance.entity.Order;
 import com.dci.clearance.generateVoucher.service.VoucherProcessingService;
+import com.dci.clearance.generateVoucher.dto.BillerooConfirmResponse;
 import com.dci.clearance.repository.OrderRepository;
+import com.dci.clearance.merchantCallback.dto.BilleroConfirmResult;
 import com.dci.clearance.merchantCallback.dto.MerchantCallbackResponse;
+import com.dci.clearance.merchantCallback.dto.OrderUpdateResult;
 import com.dci.clearance.merchantCallback.dto.PaymentSummaryResponse;
 import com.dci.clearance.merchantCallback.dto.TransactionReport;
 import com.dci.clearance.merchantCallback.mapper.MerchantCallbackMapper;
@@ -34,7 +37,8 @@ public class MerchantCallbackService {
         TransactionReport report = transactionVerificationService.fetchReport(transactionId);
 
         // ── Update order in DB, get the matched order back ────────────────────
-        Order order = updateOrderFromReport(report);
+        OrderUpdateResult result = updateOrderFromReport(report);
+        Order order = result != null ? result.getOrder() : null;
 
         // ── Enrich report with order DB data (fills nulls TLPE /report omits) ─
         TransactionReport enrichedReport = enrichReportFromOrder(report, order);
@@ -52,7 +56,7 @@ public class MerchantCallbackService {
                     .build();
         }
 
-        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(enrichedReport, null);
+        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(enrichedReport, result != null ? result.getConfirmResult() : null);
 
         return MerchantCallbackResponse.builder()
                 .success(true)
@@ -68,7 +72,7 @@ public class MerchantCallbackService {
     // ── Package-visible: also called by MerchantWebhookService ───────────────
 
     @Transactional
-    public Order updateOrderFromReport(TransactionReport report) {
+    public OrderUpdateResult updateOrderFromReport(TransactionReport report) {
         String merchantRef = report.getMerchantReference();
         String txnId = report.getTransactionId();
 
@@ -116,20 +120,34 @@ public class MerchantCallbackService {
 
         orderRepository.save(order);
 
+        BilleroConfirmResult confirmResult = null;
+
         // Auto-trigger voucher generation only for successfully confirmed orders
-        if ("PAYMENT_CONFIRMED".equals(order.getStatus())
-                && !Boolean.TRUE.equals(order.getBillerooConfirmed())) {
-            try {
-                log.info("Order {} → Auto-triggering voucher processing...", order.getId());
-                voucherProcessingService.process(order);
-                log.info("Order {} → Voucher processing completed successfully.", order.getId());
-            } catch (Exception e) {
-                log.error("Order {} → Voucher processing FAILED: {}. Order stays PAYMENT_CONFIRMED for retry.",
-                        order.getId(), e.getMessage());
+        if ("PAYMENT_CONFIRMED".equals(order.getStatus())) {
+            if (Boolean.TRUE.equals(order.getBillerooConfirmed())) {
+                confirmResult = BilleroConfirmResult.builder()
+                        .success(true)
+                        .voucherAlreadyProcessed(true)
+                        .build();
+            } else {
+                try {
+                    log.info("Order {} → Auto-triggering voucher processing...", order.getId());
+                    BillerooConfirmResponse resp = voucherProcessingService.process(order);
+                    log.info("Order {} → Voucher processing completed successfully.", order.getId());
+                    
+                    confirmResult = BilleroConfirmResult.builder()
+                            .success(true)
+                            .statusCode(resp != null ? resp.getStatus() : null)
+                            .message(resp != null ? resp.getMessage() : null)
+                            .build();
+                } catch (Exception e) {
+                    log.error("Order {} → Voucher processing FAILED: {}. Order stays PAYMENT_CONFIRMED for retry.",
+                            order.getId(), e.getMessage());
+                }
             }
         }
 
-        return order;
+        return new OrderUpdateResult(order, confirmResult);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

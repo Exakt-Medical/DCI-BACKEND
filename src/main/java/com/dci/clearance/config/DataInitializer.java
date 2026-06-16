@@ -28,7 +28,7 @@ public class DataInitializer implements CommandLineRunner {
         migrateSchema();
         initRoles();
         initUsers();
-        initCompaniesAndBranchesForExistingUsers();
+        // initCompaniesAndBranchesForExistingUsers();
     }
 
     private void migrateSchema() {
@@ -118,42 +118,42 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void initCompaniesAndBranchesForExistingUsers() {
-        List<User> users = userRepository.findAll();
-        for (User user : users) {
-            if (user.getCompanyCode() != null && user.getBranchRef() != null) continue;
-            if (user.getRole() == User.UserRole.HPG || user.getRole() == User.UserRole.LTO) continue;
+    // private void initCompaniesAndBranchesForExistingUsers() {
+    //     List<User> users = userRepository.findAll();
+    //     for (User user : users) {
+    //         if (user.getCompanyCode() != null && user.getBranchRef() != null) continue;
+    //         if (user.getRole() == User.UserRole.HPG || user.getRole() == User.UserRole.LTO) continue;
 
-            String code = "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            String branchId = "BRN-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            String fullName = (user.getFirstName() != null ? user.getFirstName() : "") +
-                    " " + (user.getLastName() != null ? user.getLastName() : "");
+    //         String code = "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    //         String branchId = "BRN-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    //         String fullName = (user.getFirstName() != null ? user.getFirstName() : "") +
+    //                 " " + (user.getLastName() != null ? user.getLastName() : "");
 
-            Company company = Company.builder()
-                    .companyName(fullName.trim() + " Company")
-                    .code(code)
-                    .email(user.getEmail())
-                    .provider("DCI")
-                    .address("")
-                    .approvalStatus("APPROVED")
-                    .status("ACTIVE")
-                    .availableVouchers(0)
-                    .userstamp(String.valueOf(user.getId()))
-                    .build();
-            companyRepository.save(company);
+    //         Company company = Company.builder()
+    //                 .companyName(fullName.trim() + " Company")
+    //                 .code(code)
+    //                 .email(user.getEmail())
+    //                 .provider("DCI")
+    //                 .address("")
+    //                 .approvalStatus("APPROVED")
+    //                 .status("ACTIVE")
+    //                 .availableVouchers(0)
+    //                 .userstamp(String.valueOf(user.getId()))
+    //                 .build();
+    //         companyRepository.save(company);
 
-            Branch branch = Branch.builder()
-                    .branchId(branchId)
-                    .branchName(fullName.trim() + " Branch")
-                    .company(company)
-                    .status("ACTIVE")
-                    .userstamp(String.valueOf(user.getId()))
-                    .build();
-            branchRepository.save(branch);
+    //         Branch branch = Branch.builder()
+    //                 .branchId(branchId)
+    //                 .branchName(fullName.trim() + " Branch")
+    //                 .company(company)
+    //                 .status("ACTIVE")
+    //                 .userstamp(String.valueOf(user.getId()))
+    //                 .build();
+    //         branchRepository.save(branch);
 
-            user.setCompanyCode(code);
-            user.setBranchRef(branchId);
-            userRepository.save(user);
-        }
-    }
+    //         user.setCompanyCode(code);
+    //         user.setBranchRef(branchId);
+    //         userRepository.save(user);
+    //     }
+    // }
 }

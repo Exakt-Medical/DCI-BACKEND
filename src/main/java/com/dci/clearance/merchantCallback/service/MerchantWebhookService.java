@@ -4,6 +4,7 @@ import com.dci.clearance.config.TlpeApiProperties;
 import com.dci.clearance.merchantCallback.config.MerchantCallbackProperties;
 import com.dci.clearance.merchantCallback.dto.MerchantCallbackResponse;
 import com.dci.clearance.merchantCallback.dto.MerchantWebhookClaims;
+import com.dci.clearance.merchantCallback.dto.OrderUpdateResult;
 import com.dci.clearance.merchantCallback.dto.PaymentSummaryResponse;
 import com.dci.clearance.merchantCallback.dto.TransactionReport;
 import com.dci.clearance.merchantCallback.exception.MerchantCallbackException;
@@ -57,9 +58,9 @@ public class MerchantWebhookService {
         TransactionReport report = toTransactionReport(webhookClaims, claims);
 
         // Update order status to PAYMENT_CONFIRMED using shared logic
-        merchantCallbackService.updateOrderFromReport(report);
+        OrderUpdateResult result = merchantCallbackService.updateOrderFromReport(report);
 
-        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, null);
+        PaymentSummaryResponse summary = MerchantCallbackMapper.toPaymentSummary(report, result != null ? result.getConfirmResult() : null);
 
         MerchantCallbackResponse response = MerchantCallbackResponse.builder()
                 .success(true)
