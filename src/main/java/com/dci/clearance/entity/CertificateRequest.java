@@ -5,9 +5,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_request_records")
+@Table(name = "certificate_requests")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class UserRequestRecord {
+public class CertificateRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -1,8 +1,8 @@
 package com.dci.clearance.controller;
 
-import com.dci.clearance.entity.UserRequestRecord;
+import com.dci.clearance.entity.CertificateRequest;
 import com.dci.clearance.repository.UserRepository;
-import com.dci.clearance.service.UserRequestRecordService;
+import com.dci.clearance.service.CertificateRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,17 +13,17 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/user-requests")
+@RequestMapping("/api/certificate-requests")
 @RequiredArgsConstructor
-public class UserRequestRecordController {
+public class CertificateRequestController {
 
-    private final UserRequestRecordService service;
+    private final CertificateRequestService service;
     private final UserRepository userRepository;
 
     @GetMapping
     public ResponseEntity<?> getMyRequests(Authentication auth) {
         Long userId = getUserId(auth);
-        List<UserRequestRecord> records = service.getMyRequests(userId);
+        List<CertificateRequest> records = service.getMyRequests(userId);
         
         // Instead of returning the entity directly, we just return the payloadJson 
         // as a map so the frontend gets back exactly what it saved.
@@ -45,7 +45,7 @@ public class UserRequestRecordController {
     public ResponseEntity<?> upsertRequest(@RequestBody Map<String, Object> payload, Authentication auth) {
         Long userId = getUserId(auth);
         try {
-            UserRequestRecord saved = service.upsertRequest(userId, payload);
+            CertificateRequest saved = service.upsertRequest(userId, payload);
             return ResponseEntity.ok(Map.of("message", "Saved successfully", "id", saved.getId()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -1,9 +1,9 @@
 package com.dci.clearance.service;
 
 import com.dci.clearance.entity.User;
-import com.dci.clearance.entity.UserRequestRecord;
+import com.dci.clearance.entity.CertificateRequest;
 import com.dci.clearance.repository.UserRepository;
-import com.dci.clearance.repository.UserRequestRecordRepository;
+import com.dci.clearance.repository.CertificateRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,17 +14,17 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserRequestRecordService {
+public class CertificateRequestService {
 
-    private final UserRequestRecordRepository repository;
+    private final CertificateRequestRepository repository;
     private final UserRepository userRepository;
 
-    public List<UserRequestRecord> getMyRequests(Long userId) {
+    public List<CertificateRequest> getMyRequests(Long userId) {
         return repository.findByUserIdOrderByDateUpdatedDesc(userId);
     }
 
     @Transactional
-    public UserRequestRecord upsertRequest(Long userId, Map<String, Object> payload) {
+    public CertificateRequest upsertRequest(Long userId, Map<String, Object> payload) {
         Object idObj = payload.get("id");
         Long id = null;
         if (idObj != null) {
@@ -40,7 +40,7 @@ public class UserRequestRecordService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        UserRequestRecord record = null;
+        CertificateRequest record = null;
         if (id != null) {
             record = repository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Record not found"));
@@ -51,7 +51,7 @@ public class UserRequestRecordService {
                 throw new RuntimeException("Unauthorized to modify this request");
             }
         } else {
-            record = new UserRequestRecord();
+            record = new CertificateRequest();
             record.setUser(user);
         }
 
