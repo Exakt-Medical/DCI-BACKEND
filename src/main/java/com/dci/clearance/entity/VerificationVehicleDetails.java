@@ -36,6 +36,9 @@ public class VerificationVehicleDetails {
     @Column(name = "last_registration_date", length = 50)
     private String lastRegistrationDate;
 
+    @Column(name = "voucher_id")
+    private Long voucherId;
+
     @Column(name = "date_created")
     private LocalDateTime dateCreated;
 

@@ -199,6 +199,15 @@ public class VoucherService {
                 voucherCode, certNo, voucherReference, remaining);
     }
 
+    /**
+     * Looks up a voucher's database ID by its code.
+     */
+    public Long findIdByCode(String voucherCode) {
+        Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
+                .orElseThrow(() -> new RuntimeException("Voucher not found: " + voucherCode));
+        return voucher.getId();
+    }
+
     private String randomAlpha(int length) {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder();

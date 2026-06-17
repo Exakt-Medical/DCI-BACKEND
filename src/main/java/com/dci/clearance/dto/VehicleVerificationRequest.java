@@ -23,4 +23,5 @@ public class VehicleVerificationRequest {
     private String validationFee;
     private String totalAmount;
     private String voucherCode;
+    private Long voucherId;
 }
