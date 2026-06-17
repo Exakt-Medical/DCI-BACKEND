@@ -17,7 +17,8 @@ public class CertificateRequest {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-
+    @Column(name = "verification_id")
+    private Long verificationId;
 
     @Column(name = "current_step")
     private Integer currentStep;

@@ -12,5 +12,5 @@ import java.util.Optional;
 @Repository
 public interface CertificateRequestRepository extends JpaRepository<CertificateRequest, Long> {
     List<CertificateRequest> findByUserIdOrderByDateUpdatedDesc(Long userId);
-
+    Optional<CertificateRequest> findFirstByVoucherCodeOrderByIdDesc(String voucherCode);
 }

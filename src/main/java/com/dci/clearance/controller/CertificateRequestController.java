@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,18 +26,9 @@ public class CertificateRequestController {
         Long userId = getUserId(auth);
         List<CertificateRequest> records = service.getMyRequests(userId);
         
-        // Instead of returning the entity directly, we just return the payloadJson 
-        // as a map so the frontend gets back exactly what it saved.
-        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        List<Map<String, Object>> response = records.stream().map(record -> {
-            try {
-                Map<String, Object> map = mapper.readValue(record.getPayloadJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>(){});
-                map.put("id", record.getId());
-                return map;
-            } catch (Exception e) {
-                return Map.<String, Object>of("id", record.getId());
-            }
-        }).collect(Collectors.toList());
+        List<Map<String, Object>> response = records.stream()
+                .map(service::getRequestPayload)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
     }
@@ -47,6 +39,25 @@ public class CertificateRequestController {
         try {
             CertificateRequest saved = service.upsertRequest(userId, payload);
             return ResponseEntity.ok(Map.of("message", "Saved successfully", "id", saved.getId()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/by-voucher/{voucherCode}")
+    public ResponseEntity<?> getRequestByVoucher(@PathVariable String voucherCode) {
+        Optional<Map<String, Object>> opt = service.getVerificationDetailsByVoucherCode(voucherCode);
+        if (opt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(opt.get());
+    }
+
+    @PostMapping("/by-voucher/{voucherCode}/verify")
+    public ResponseEntity<?> verifyRequestByVoucher(@PathVariable String voucherCode) {
+        try {
+            CertificateRequest saved = service.verifyRequestByVoucherCode(voucherCode);
+            return ResponseEntity.ok(Map.of("message", "Voucher verified by HPG successfully", "id", saved.getId()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
