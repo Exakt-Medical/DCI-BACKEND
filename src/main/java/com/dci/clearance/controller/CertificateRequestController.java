@@ -38,7 +38,11 @@ public class CertificateRequestController {
         Long userId = getUserId(auth);
         try {
             CertificateRequest saved = service.upsertRequest(userId, payload);
-            return ResponseEntity.ok(Map.of("message", "Saved successfully", "id", saved.getId()));
+            return ResponseEntity.ok(Map.of(
+                "message", "Saved successfully",
+                "id", saved.getId(),
+                "certificateNo", saved.getCertificateNo() != null ? saved.getCertificateNo() : ""
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

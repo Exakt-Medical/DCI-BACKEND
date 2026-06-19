@@ -30,6 +30,7 @@ public class CertificateRequestService {
     private final VerificationVehicleDetailsRepository vehicleDetailsRepo;
     private final VerificationOwnerDetailsRepository ownerDetailsRepo;
     private final VerificationRequestRepository verificationRequestRepo;
+    private final VoucherService voucherService;
 
     public List<CertificateRequest> getMyRequests(Long userId) {
         return repository.findByUserIdOrderByDateUpdatedDesc(userId);
@@ -91,6 +92,13 @@ public class CertificateRequestService {
         if (payload.get("certificateNo") != null) {
             record.setCertificateNo((String) payload.get("certificateNo"));
         }
+        if ("CERTIFICATE_ISSUED".equals(payload.get("status"))) {
+            if (record.getCertificateNo() == null || record.getCertificateNo().isBlank() || record.getCertificateNo().startsWith("DCI-CERT-17") || record.getCertificateNo().startsWith("DCI-CERT-18")) {
+                String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+                String certNo = "DCI-CERT-" + dateStr + "-" + record.getId();
+                record.setCertificateNo(certNo);
+            }
+        }
         if (payload.get("voucherCode") != null) {
             record.setVoucherCode((String) payload.get("voucherCode"));
         }
@@ -145,6 +153,17 @@ public class CertificateRequestService {
             record.setVerificationId(verificationId);
         }
 
+        if ("MVC_MEC_VALIDATED".equals(payload.get("status"))) {
+            if (verificationId != null) {
+                Optional<VerificationRequest> vrOpt = verificationRequestRepo.findById(verificationId);
+                if (vrOpt.isEmpty() || vrOpt.get().getVerificationStatus() != VerificationRequest.VerificationStatus.VERIFIED) {
+                    throw new RuntimeException("DCI validation failed: Verification status in database must be VERIFIED.");
+                }
+            } else {
+                throw new RuntimeException("DCI validation failed: Missing verification ID.");
+            }
+        }
+
         Map<String, Object> sanitizedPayload = new java.util.HashMap<>(payload);
         sanitizedPayload.remove("orCr");
         sanitizedPayload.remove("crCr");
@@ -164,7 +183,27 @@ public class CertificateRequestService {
             throw new RuntimeException("Failed to serialize payload");
         }
 
-        return repository.save(record);
+        CertificateRequest savedRecord = repository.save(record);
+
+        if ("CERTIFICATE_ISSUED".equals(payload.get("status")) || "MVC_MEC_VALIDATED".equals(payload.get("status"))) {
+            String finalVoucherCode = voucherCode != null ? voucherCode : savedRecord.getVoucherCode();
+            String finalCertNo = savedRecord.getCertificateNo() != null ? savedRecord.getCertificateNo() : (String) payload.get("certificateNo");
+            if (finalVoucherCode != null && !finalVoucherCode.isBlank()) {
+                if (finalCertNo == null || finalCertNo.isBlank()) {
+                    finalCertNo = "DCI-PENDING-" + savedRecord.getId();
+                }
+                try {
+                    Optional<Voucher> vOpt = voucherRepository.findByVoucherCode(finalVoucherCode);
+                    if (vOpt.isPresent() && "AVAILABLE".equalsIgnoreCase(vOpt.get().getStatus())) {
+                        voucherService.redeemVoucherByCode(finalVoucherCode, finalCertNo);
+                    }
+                } catch (Exception e) {
+                    // Log the error but don't fail the save operation
+                }
+            }
+        }
+
+        return savedRecord;
     }
 
     public Map<String, Object> getRequestPayload(CertificateRequest record) {
@@ -176,12 +215,34 @@ public class CertificateRequestService {
             map = new java.util.HashMap<>();
         }
         map.put("id", record.getId());
+        if (record.getCertificateNo() != null) {
+            map.put("certificateNo", record.getCertificateNo());
+            map.put("clearanceReferenceNo", record.getCertificateNo());
+        }
+        if (record.getVoucherCode() != null) {
+            map.put("voucherCode", record.getVoucherCode());
+            map.put("voucherReferenceNo", record.getVoucherCode());
+        }
+        if (record.getStatus() != null) {
+            map.put("status", record.getStatus());
+        }
+        if (record.getCurrentStep() != null) {
+            map.put("currentStep", record.getCurrentStep());
+        }
+        if (record.getPlateNumber() != null) {
+            map.put("plateNumber", record.getPlateNumber());
+        }
         
         Long verificationId = record.getVerificationId();
         if (verificationId != null) {
+            map.put("verificationId", verificationId);
             VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo.findByVerificationId(verificationId).orElse(null);
             VerificationOwnerDetails ownerDetails = ownerDetailsRepo.findByVerificationId(verificationId).orElse(null);
             VerificationRequest verificationRequest = verificationRequestRepo.findById(verificationId).orElse(null);
+            
+            if (verificationRequest != null) {
+                map.put("verificationStatus", verificationRequest.getVerificationStatus().toString());
+            }
             
             if (vehicleDetails != null) {
                 Map<String, Object> vehicleMap = new java.util.HashMap<>();
@@ -190,11 +251,13 @@ public class CertificateRequestService {
                     vehicleMap.put("mvFileNumber", verificationRequest.getMvFileNumber());
                     vehicleMap.put("engineNumber", verificationRequest.getEngineNumber());
                     vehicleMap.put("chassisNumber", verificationRequest.getChassisNumber());
+                    vehicleMap.put("verificationStatus", verificationRequest.getVerificationStatus().toString());
                 } else {
                     vehicleMap.put("plateNumber", "");
                     vehicleMap.put("mvFileNumber", "");
                     vehicleMap.put("engineNumber", "");
                     vehicleMap.put("chassisNumber", "");
+                    vehicleMap.put("verificationStatus", "");
                 }
                 vehicleMap.put("classification", vehicleDetails.getClassification());
                 vehicleMap.put("vehicleType", vehicleDetails.getBodyType());
@@ -296,11 +359,13 @@ public class CertificateRequestService {
                 vehicleData.put("mvFileNumber", verificationRequest.getMvFileNumber());
                 vehicleData.put("engineNumber", verificationRequest.getEngineNumber());
                 vehicleData.put("chassisNumber", verificationRequest.getChassisNumber());
+                vehicleData.put("verificationStatus", verificationRequest.getVerificationStatus().toString());
             } else {
                 vehicleData.put("plateNumber", "");
                 vehicleData.put("mvFileNumber", "");
                 vehicleData.put("engineNumber", "");
                 vehicleData.put("chassisNumber", "");
+                vehicleData.put("verificationStatus", "");
             }
             vehicleData.put("make", vehicleDetails.getMake());
             vehicleData.put("series", vehicleDetails.getSeries());
