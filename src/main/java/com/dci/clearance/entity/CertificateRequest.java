@@ -5,9 +5,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_request_records")
+@Table(name = "certificate_requests")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class UserRequestRecord {
+public class CertificateRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,7 +17,8 @@ public class UserRequestRecord {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-
+    @Column(name = "verification_id")
+    private Long verificationId;
 
     @Column(name = "current_step")
     private Integer currentStep;

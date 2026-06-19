@@ -59,6 +59,10 @@ public class Voucher {
     @Column(name = "voucher_reference", length = 255)
     private String voucherReference;
 
+    @Column(name = "hpg_verified", nullable = false)
+    @Builder.Default
+    private Boolean hpgVerified = false;
+
     @Column(name = "redeemed_at")
     private LocalDateTime redeemedAt;
 
