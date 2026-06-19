@@ -395,6 +395,16 @@ public class CertificateRequestService {
         CertificateRequest record = repository.findFirstByVoucherCodeOrderByIdDesc(voucherCode)
                 .orElseThrow(() -> new RuntimeException("Certificate request not found for voucher code: " + voucherCode));
 
+        Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
+                .orElseThrow(() -> new RuntimeException("Voucher not found for voucher code: " + voucherCode));
+
+        if (Boolean.TRUE.equals(voucher.getHpgVerified()) || 
+            "HPG_VERIFIED".equals(record.getStatus()) || 
+            "MVC_MEC_VALIDATED".equals(record.getStatus()) || 
+            "CERTIFICATE_ISSUED".equals(record.getStatus())) {
+            throw new RuntimeException("This request has already been verified by HPG.");
+        }
+
         record.setStatus("HPG_VERIFIED");
 
         try {
@@ -416,6 +426,9 @@ public class CertificateRequestService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to update request payload: " + e.getMessage());
         }
+
+        voucher.setHpgVerified(true);
+        voucherRepository.save(voucher);
 
         return repository.save(record);
     }
