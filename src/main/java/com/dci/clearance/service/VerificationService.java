@@ -75,7 +75,7 @@ public class VerificationService {
             if (vehicleData != null) {
                 vvsLog.setVvsRequestId(vehicleData.getRequestId());
 
-                saveVehicleDetails(record.getId(), vehicleData, request.getVoucherId());
+                saveVehicleDetails(record.getId(), vehicleData);
                 saveOwnerDetails(record.getId(), vehicleData);
 
                 // Update verification request with vehicle details from VVS
@@ -155,24 +155,7 @@ public class VerificationService {
 
             VvsVehicleData vehicleData = resolveStoredVehicleData(vvsLog);
 
-            // Resolve voucherId: prefer request value, else look up by voucherCode
-            Long voucherId = request.getVoucherId();
-            if (voucherId == null && request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
-                try {
-                    voucherId = voucherService.findIdByCode(request.getVoucherCode());
-                } catch (Exception e) {
-                    log.warn("Could not resolve voucherId from code={}: {}", request.getVoucherCode(), e.getMessage());
-                }
-            }
 
-            // Update vehicle details with the voucherId
-            if (voucherId != null) {
-                VerificationVehicleDetails vd = vehicleDetailsRepo.findByVerificationId(record.getId()).orElse(null);
-                if (vd != null) {
-                    vd.setVoucherId(voucherId);
-                    vehicleDetailsRepo.save(vd);
-                }
-            }
 
             String certNo = dciCertificateService.issue(
                     record, request.getPremiumType(), userId, expiry);
@@ -220,7 +203,7 @@ public class VerificationService {
         return verificationRepo.findByPlateNumberAndVerificationStatus(plateNumber, VerificationStatus.COMPLETED).isPresent();
     }
 
-    private void saveVehicleDetails(Long verificationId, VvsVehicleData v, Long voucherId) {
+    private void saveVehicleDetails(Long verificationId, VvsVehicleData v) {
         VerificationVehicleDetails d = vehicleDetailsRepo.findByVerificationId(verificationId)
                 .orElse(new VerificationVehicleDetails());
         d.setVerificationId(verificationId);
@@ -232,7 +215,6 @@ public class VerificationService {
         d.setBodyType(v.getBodyType());
         d.setDenomination(v.getDenomination());
         d.setLastRegistrationDate(v.getLastRegistrationDate());
-        d.setVoucherId(voucherId);
         vehicleDetailsRepo.save(d);
     }
 

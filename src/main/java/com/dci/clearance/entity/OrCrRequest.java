@@ -1,0 +1,72 @@
+package com.dci.clearance.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "or_cr_requests")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class OrCrRequest {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "certificate_request_id", nullable = false)
+    private CertificateRequest certificateRequest;
+
+    @Column(name = "vehicle_option", length = 20)
+    private String vehicleOption;
+
+    @Column(name = "or_number", length = 100)
+    private String orNumber;
+
+    @Column(name = "cr_number", length = 100)
+    private String crNumber;
+
+    @Column(name = "plate_number", length = 50)
+    private String plateNumber;
+
+    @Column(name = "mv_file_number", length = 50)
+    private String mvFileNumber;
+
+    @Column(name = "engine_number", length = 100)
+    private String engineNumber;
+
+    @Column(name = "chassis_number", length = 100)
+    private String chassisNumber;
+
+    @Column(name = "make", length = 100)
+    private String make;
+
+    @Column(name = "series", length = 100)
+    private String series;
+
+    @Column(name = "year_model", length = 10)
+    private String yearModel;
+
+    @Column(name = "color", length = 50)
+    private String color;
+
+    @Column(name = "owner_name", length = 200)
+    private String ownerName;
+
+    @Column(name = "owner_address", length = 500)
+    private String ownerAddress;
+
+    @Column(name = "classification", length = 100)
+    private String classification;
+
+    @Column(name = "vehicle_type", length = 100)
+    private String vehicleType;
+
+    @Column(name = "fuel_type", length = 100)
+    private String fuelType;
+
+    @CreationTimestamp
+    @Column(name = "date_created", nullable = false, updatable = false)
+    private LocalDateTime dateCreated;
+}
