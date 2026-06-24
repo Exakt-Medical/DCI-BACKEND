@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Inspector (UAT)</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .split-pane {
+            display: flex;
+            height: calc(100vh - 64px);
+        }
+        .left-pane {
+            width: 300px;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+        .right-pane {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #ffffff;
+        }
+        .log-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .log-item:hover {
+            background-color: #f3f4f6;
+        }
+        .log-item.active {
+            background-color: #e5e7eb;
+            border-left: 4px solid #3b82f6;
+        }
+        pre {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .method-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            background-color: #10b981; /* Default POST color */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-900">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shadow-sm">
+        <div class="flex items-center space-x-2">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            <h1 class="text-xl font-bold text-gray-800">Webhook Inspector <span class="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded ml-2">UAT Environment</span></h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div id="statusIndicator" class="flex items-center text-sm text-green-600">
+                <span class="relative flex h-3 w-3 mr-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                Listening...
+            </div>
+            <button onclick="clearLogs()" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded text-sm font-medium transition-colors border border-red-200 shadow-sm flex items-center">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Clear Logs
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="split-pane">
+        <!-- Sidebar -->
+        <div class="left-pane" id="logList">
+            <!-- Populated by JS -->
+            <div class="p-4 text-center text-gray-500 text-sm mt-10">Waiting for first webhook...</div>
+        </div>
+
+        <!-- Detail View -->
+        <div class="right-pane relative">
+            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-white z-10">
+                <svg class="w-16 h-16 mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <p class="text-lg">Select a request to view details</p>
+                <p class="text-sm mt-2">New requests will appear automatically</p>
+            </div>
+
+            <div id="detailView" class="hidden h-full flex flex-col">
+                <!-- Request Title -->
+                <div class="mb-6 pb-4 border-b border-gray-200 flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span id="detailMethod" class="method-badge">POST</span>
+                            <h2 id="detailEndpoint" class="text-xl font-bold text-gray-800 break-all">/api/endpoint</h2>
+                        </div>
+                        <p id="detailTime" class="text-sm text-gray-500">2026-06-23 10:19:49</p>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex space-x-4 mb-4 border-b border-gray-200">
+                    <button id="tabPayload" class="px-4 py-2 text-sm font-medium border-b-2 border-blue-500 text-blue-600 focus:outline-none">Raw Body</button>
+                    <button id="tabHeaders" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 focus:outline-none">Headers</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="flex-grow overflow-auto pb-8">
+                    <!-- Body Tab -->
+                    <div id="contentPayload" class="h-full">
+                        <pre id="payloadContent" class="h-full m-0"></pre>
+                    </div>
+
+                    <!-- Headers Tab -->
+                    <div id="contentHeaders" class="hidden h-full">
+                        <pre id="headersContent" class="h-full m-0"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let logs = [];
+        let selectedLogId = null;
+        let isPolling = false;
+
+        // Formats the timestamp for display
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        // Beautifully formats JSON payload
+        function formatJson(jsonString) {
+            if (!jsonString) return '(empty)';
+            try {
+                return JSON.stringify(JSON.parse(jsonString), null, 2);
+            } catch (e) {
+                return jsonString; // return raw if not valid JSON
+            }
+        }
+
+        // Updates the sidebar list
+        function renderList() {
+            const container = document.getElementById('logList');
+            
+            if (logs.length === 0) {
+                container.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm mt-10">Waiting for webhooks...</div>`;
+                document.getElementById('emptyState').classList.remove('hidden');
+                document.getElementById('detailView').classList.add('hidden');
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div class="log-item ${log.id === selectedLogId ? 'active' : ''}" onclick="selectLog(${log.id})">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="method-badge">${log.method}</span>
+                        <span class="text-xs text-gray-500">${formatTime(log.timestamp).split(',')[1]}</span>
+                    </div>
+                    <div class="text-sm font-medium text-gray-800 truncate" title="${log.endpoint}">
+                        ${log.endpoint.split('/').pop() || log.endpoint}
+                    </div>
+                </div>
+            `).join('');
+
+            // Auto-select first item if none selected
+            if (!selectedLogId && logs.length > 0) {
+                selectLog(logs[0].id);
+            }
+        }
+
+        // Renders the details on the right side
+        function renderDetails(log) {
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('detailView').classList.remove('hidden');
+
+            document.getElementById('detailMethod').textContent = log.method;
+            document.getElementById('detailEndpoint').textContent = log.endpoint;
+            document.getElementById('detailTime').textContent = formatTime(log.timestamp);
+            
+            document.getElementById('payloadContent').textContent = formatJson(log.payload);
+            document.getElementById('headersContent').textContent = formatJson(log.headers);
+        }
+
+        // Handles selection click
+        window.selectLog = function(id) {
+            selectedLogId = id;
+            const log = logs.find(l => l.id === id);
+            if (log) {
+                renderDetails(log);
+                renderList(); // re-render to update 'active' class
+            }
+        }
+
+        // Fetches logs from API
+        async function fetchLogs() {
+            if (isPolling) return;
+            isPolling = true;
+            
+            try {
+                const response = await fetch('/api/public/inspector/logs');
+                if (response.ok) {
+                    const newLogs = await response.json();
+                    
+                    // Check if new data arrived (compare lengths or latest ID)
+                    const isNewData = logs.length !== newLogs.length || (newLogs.length > 0 && logs.length > 0 && logs[0].id !== newLogs[0].id);
+                    
+                    logs = newLogs;
+                    
+                    if (isNewData) {
+                        renderList();
+                        // If selected item is no longer in the list (e.g. pushed out by 50 limit), reset selection
+                        if (selectedLogId && !logs.find(l => l.id === selectedLogId)) {
+                            selectedLogId = null;
+                            if (logs.length > 0) selectLog(logs[0].id);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch logs:", error);
+            } finally {
+                isPolling = false;
+            }
+        }
+
+        // Clears logs
+        window.clearLogs = async function() {
+            if(!confirm("Are you sure you want to delete all captured webhooks?")) return;
+            
+            try {
+                await fetch('/api/public/inspector/logs', { method: 'DELETE' });
+                logs = [];
+                selectedLogId = null;
+                renderList();
+            } catch (error) {
+                alert("Failed to clear logs");
+            }
+        }
+
+        // Tab Switching Logic
+        document.getElementById('tabPayload').addEventListener('click', (e) => {
+            e.target.classList.replace('border-transparent', 'border-blue-500');
+            e.target.classList.replace('text-gray-500', 'text-blue-600');
+            
+            const headersTab = document.getElementById('tabHeaders');
+            headersTab.classList.replace('border-blue-500', 'border-transparent');
+            headersTab.classList.replace('text-blue-600', 'text-gray-500');
+
+            document.getElementById('contentPayload').classList.remove('hidden');
+            document.getElementById('contentHeaders').classList.add('hidden');
+        });
+
+        document.getElementById('tabHeaders').addEventListener('click', (e) => {
+            e.target.classList.replace('border-transparent', 'border-blue-500');
+            e.target.classList.replace('text-gray-500', 'text-blue-600');
+            
+            const payloadTab = document.getElementById('tabPayload');
+            payloadTab.classList.replace('border-blue-500', 'border-transparent');
+            payloadTab.classList.replace('text-blue-600', 'text-gray-500');
+
+            document.getElementById('contentHeaders').classList.remove('hidden');
+            document.getElementById('contentPayload').classList.add('hidden');
+        });
+
+        // Start polling every 3 seconds
+        fetchLogs();
+        setInterval(fetchLogs, 3000);
+
+    </script>
+</body>
+</html>
