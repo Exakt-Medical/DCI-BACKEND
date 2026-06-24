@@ -19,6 +19,10 @@ public interface VerificationRequestRepository extends JpaRepository<Verificatio
 
     Optional<VerificationRequest> findByPlateNumberAndVerificationStatus(String plateNumber, VerificationStatus status);
 
+    Optional<VerificationRequest> findFirstByPlateNumberAndVerificationStatusOrderByIdDesc(String plateNumber, VerificationStatus status);
+
+    Optional<VerificationRequest> findFirstByEngineNumberAndChassisNumberAndVerificationStatusOrderByIdDesc(String engineNumber, String chassisNumber, VerificationStatus status);
+
     Page<VerificationRequest> findAllByOrderByDateCreatedDesc(Pageable pageable);
 
     Page<VerificationRequest> findByVerificationStatusOrderByDateCreatedDesc(VerificationStatus status, Pageable pageable);

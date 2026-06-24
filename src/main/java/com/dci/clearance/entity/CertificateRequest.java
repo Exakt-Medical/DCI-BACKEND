@@ -20,23 +20,21 @@ public class CertificateRequest {
     @Column(name = "verification_id")
     private Long verificationId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    private Voucher voucher;
+
     @Column(name = "current_step")
     private Integer currentStep;
 
     @Column(name = "status", length = 50)
     private String status;
 
-    @Column(name = "plate_number", length = 50)
-    private String plateNumber;
-
     @Column(name = "certificate_no", length = 100)
     private String certificateNo;
 
     @Column(name = "voucher_code", length = 100)
     private String voucherCode;
-
-    @Column(name = "payload_json", columnDefinition = "LONGTEXT")
-    private String payloadJson;
 
     @Column(name = "date_created", nullable = false)
     private LocalDateTime dateCreated;
