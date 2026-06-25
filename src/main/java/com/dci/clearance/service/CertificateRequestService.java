@@ -93,7 +93,7 @@ public class CertificateRequestService {
         if ("CERTIFICATE_ISSUED".equals(payload.get("status"))) {
             if (record.getCertificateNo() == null || record.getCertificateNo().isBlank() || record.getCertificateNo().startsWith("DCI-CERT-17") || record.getCertificateNo().startsWith("DCI-CERT-18")) {
                 String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-                String certNo = "DCI-CERT-" + dateStr + "-" + record.getId();
+                String certNo = "DCI-CERT-" + dateStr + "-" + java.util.UUID.randomUUID().toString();
                 record.setCertificateNo(certNo);
             }
         }
@@ -263,7 +263,7 @@ public class CertificateRequestService {
 
                     if (orCrReq.getOwnerName() != null && !orCrReq.getOwnerName().isEmpty() && !orCrReq.getOwnerName().equalsIgnoreCase(vvsOwner) && !orCrReq.getOwnerName().equalsIgnoreCase(od.getOrganization())) {
                         match = false;
-                        mismatchReason = "Owner Name mismatch.";
+                        mismatchReason += (mismatchReason.isEmpty() ? "" : " ") + "Owner Name mismatch.";
                     }
                 }
 
@@ -322,6 +322,8 @@ public class CertificateRequestService {
 
                 String mecEngine = mvcMecReq.getEngineNoStencilled() != null ? mvcMecReq.getEngineNoStencilled().trim().toUpperCase() : "";
                 String mecChassis = mvcMecReq.getChassisNoStencilled() != null ? mvcMecReq.getChassisNoStencilled().trim().toUpperCase() : "";
+                String mecPlate = mecData != null && mecData.get("plateNo") != null ? ((String) mecData.get("plateNo")).trim().toUpperCase() : "";
+                String mecColor = mecData != null && mecData.get("color") != null ? ((String) mecData.get("color")).trim().toUpperCase() : "";
 
                 OrCrRequest orCr = orCrRequestRepository.findByCertificateRequestId(savedRecord.getId()).orElse(null);
 
@@ -336,6 +338,12 @@ public class CertificateRequestService {
                     }
                     if (!mvcChassis.equalsIgnoreCase(mecChassis)) {
                         throw new RuntimeException("DCI validation failed: Chassis numbers do not match between MVCC and MEC.");
+                    }
+                    if (!mvcPlate.equalsIgnoreCase(mecPlate)) {
+                        throw new RuntimeException("DCI validation failed: Plate numbers do not match between MVCC and MEC.");
+                    }
+                    if (!mvcColor.equalsIgnoreCase(mecColor)) {
+                        throw new RuntimeException("DCI validation failed: Colors do not match between MVCC and MEC.");
                     }
                     if (!mvcEngine.equalsIgnoreCase(vEngine)) {
                         throw new RuntimeException("DCI validation failed: Engine number does not match verified OR/CR details.");
@@ -354,7 +362,7 @@ public class CertificateRequestService {
         }
 
         // Voucher redemption
-        if ("CERTIFICATE_ISSUED".equals(payload.get("status")) || "MVC_MEC_VALIDATED".equals(payload.get("status"))) {
+        if ("CERTIFICATE_ISSUED".equals(payload.get("status"))) {
             String finalVoucherCode = savedRecord.getVoucherCode();
             String finalCertNo = savedRecord.getCertificateNo() != null ? savedRecord.getCertificateNo() : (String) payload.get("certificateNo");
             if (finalVoucherCode != null && !finalVoucherCode.isBlank()) {
