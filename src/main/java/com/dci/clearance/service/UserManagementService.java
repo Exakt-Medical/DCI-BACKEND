@@ -19,6 +19,7 @@ public class UserManagementService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditTrailService auditTrailService;
+    private final AccountSetupService accountSetupService;
 
     @Transactional(readOnly = true)
     public List<UserResponse> getAll() {
@@ -62,6 +63,11 @@ public class UserManagementService {
                 .build();
 
         user = userRepository.save(user);
+        
+        if (user.getRole() == User.UserRole.CITIZEN || user.getRole() == User.UserRole.AGENT_FIXER) {
+            accountSetupService.setupCompanyAndBranch(user);
+            user = userRepository.save(user);
+        }
         String displayName = (request.getFirstName() + " " + request.getLastName()).trim() + " (" + request.getUsername() + ")";
         String roleName = request.getRole() != null ? request.getRole() : "CITIZEN";
         auditTrailService.logAction("Add Account", "Added account: " + displayName + " as " + roleName, username, currentUser.getRole().name());
@@ -166,7 +172,12 @@ public class UserManagementService {
                     .status("ACTIVE")
                     .mobile(request.getMobile())
                     .build();
-            return userRepository.save(user);
+            user = userRepository.save(user);
+            if (user.getRole() == User.UserRole.CITIZEN || user.getRole() == User.UserRole.AGENT_FIXER) {
+                accountSetupService.setupCompanyAndBranch(user);
+                user = userRepository.save(user);
+            }
+            return user;
         }).map(this::toResponse).collect(Collectors.toList());
         auditTrailService.logAction("Bulk Add Accounts", "Bulk added " + responses.size() + " accounts", username, currentUser.getRole().name());
         return responses;

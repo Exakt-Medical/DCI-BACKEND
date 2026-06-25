@@ -43,7 +43,7 @@ public class AccountSetupService {
 
     @Transactional
     public void setupCompanyAndBranch(User user) {
-        if (user.getRole() == User.UserRole.CITIZEN) {
+        if (user.getRole() == User.UserRole.CITIZEN || user.getRole() == User.UserRole.AGENT_FIXER) {
             setupCitizenShadowCompany(user);
         } else {
             setupCtplCompanyAndBranch(user);
