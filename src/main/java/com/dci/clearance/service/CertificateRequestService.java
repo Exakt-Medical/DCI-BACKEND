@@ -90,13 +90,7 @@ public class CertificateRequestService {
         if (payload.get("certificateNo") != null) {
             record.setCertificateNo((String) payload.get("certificateNo"));
         }
-        if ("CERTIFICATE_ISSUED".equals(payload.get("status"))) {
-            if (record.getCertificateNo() == null || record.getCertificateNo().isBlank() || record.getCertificateNo().startsWith("DCI-CERT-17") || record.getCertificateNo().startsWith("DCI-CERT-18")) {
-                String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-                String certNo = "DCI-CERT-" + dateStr + "-" + java.util.UUID.randomUUID().toString();
-                record.setCertificateNo(certNo);
-            }
-        }
+
         if (payload.get("voucherCode") != null) {
             record.setVoucherCode((String) payload.get("voucherCode"));
         }
@@ -133,6 +127,14 @@ public class CertificateRequestService {
 
         CertificateRequest savedRecord = repository.save(record);
 
+        if ("CERTIFICATE_ISSUED".equals(payload.get("status"))) {
+            if (savedRecord.getCertificateNo() == null || savedRecord.getCertificateNo().isBlank() || savedRecord.getCertificateNo().startsWith("DCI-CERT-17") || savedRecord.getCertificateNo().startsWith("DCI-CERT-18")) {
+                long randomNum = java.util.concurrent.ThreadLocalRandom.current().nextLong(10000000L, 100000000L);
+                String certNo = String.format("DCI-CERT-%d%04d", randomNum, savedRecord.getId());
+                savedRecord.setCertificateNo(certNo);
+                savedRecord = repository.save(savedRecord);
+            }
+        }
         // 1. Persist OR/CR details if present
         if (payload.containsKey("orCr") || payload.containsKey("crCr") || payload.containsKey("orNumber") || payload.containsKey("crNumber") || payload.containsKey("vehicleOption")) {
             OrCrRequest orCrReq = orCrRequestRepository.findByCertificateRequestId(savedRecord.getId())
