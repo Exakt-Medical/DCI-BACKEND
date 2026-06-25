@@ -104,10 +104,18 @@ public class CertificateRequestService {
                 voucherId = Long.parseLong((String) vId);
             }
             if (voucherId != null) {
-                voucherRepository.findById(voucherId).ifPresent(record::setVoucher);
+                java.util.Optional<Voucher> vOpt = voucherRepository.findById(voucherId);
+                if (vOpt.isPresent()) {
+                    Voucher v = vOpt.get();
+                    record.setVoucher(v);
+                }
             }
         } else if (record.getVoucher() == null && record.getVoucherCode() != null && !record.getVoucherCode().isBlank()) {
-            voucherRepository.findByVoucherCode(record.getVoucherCode()).ifPresent(record::setVoucher);
+            java.util.Optional<Voucher> vOpt = voucherRepository.findByVoucherCode(record.getVoucherCode());
+            if (vOpt.isPresent()) {
+                Voucher v = vOpt.get();
+                record.setVoucher(v);
+            }
         }
 
         Long verificationId = null;
@@ -533,7 +541,7 @@ public class CertificateRequestService {
             if (User.UserRole.CITIZEN.equals(userRole)) {
                 record.setCurrentStep(5);
             } else if (User.UserRole.AGENT_FIXER.equals(userRole)) {
-                record.setCurrentStep(3);
+                record.setCurrentStep(4);
             }
         }
 
