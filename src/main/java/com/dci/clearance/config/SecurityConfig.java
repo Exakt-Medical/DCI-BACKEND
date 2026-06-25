@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/billeroo/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/webhook-inspector.html").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/hpg/**").hasAnyRole("HPG", "ADMIN")
                         .requestMatchers("/api/lto/**").hasAnyRole("LTO", "ADMIN")
