@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface OrCrRequestRepository extends JpaRepository<OrCrRequest, Long> {
     Optional<OrCrRequest> findByCertificateRequestId(Long certificateRequestId);
+    java.util.List<OrCrRequest> findByCertificateRequestIdIn(java.util.List<Long> certificateRequestIds);
 }
