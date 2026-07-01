@@ -153,11 +153,28 @@ public class CertificateRequestService {
 
 
             if (payload.containsKey("orCr")) {
-                Map<?, ?> vehicleMap = (Map<?, ?>) payload.get("orCr");
-                if (vehicleMap.get("plateNumber") != null) orCrReq.setPlateNumber((String) vehicleMap.get("plateNumber"));
-                if (vehicleMap.get("mvFileNumber") != null) orCrReq.setMvFileNumber((String) vehicleMap.get("mvFileNumber"));
-                if (vehicleMap.get("engineNumber") != null) orCrReq.setEngineNumber((String) vehicleMap.get("engineNumber"));
-                if (vehicleMap.get("chassisNumber") != null) orCrReq.setChassisNumber((String) vehicleMap.get("chassisNumber"));
+                Map<?, ?> orMap = (Map<?, ?>) payload.get("orCr");
+                if (orMap.get("plateNumber") != null && !((String)orMap.get("plateNumber")).isEmpty()) {
+                    orCrReq.setPlateNumber((String) orMap.get("plateNumber"));
+                }
+                if (orMap.get("mvFileNumber") != null && !((String)orMap.get("mvFileNumber")).isEmpty()) {
+                    orCrReq.setMvFileNumber((String) orMap.get("mvFileNumber"));
+                }
+            }
+            if (payload.containsKey("crCr")) {
+                Map<?, ?> crMap = (Map<?, ?>) payload.get("crCr");
+                if (crMap.get("plateNumber") != null && !((String)crMap.get("plateNumber")).isEmpty()) {
+                    orCrReq.setPlateNumber((String) crMap.get("plateNumber"));
+                }
+                if (crMap.get("mvFileNumber") != null && !((String)crMap.get("mvFileNumber")).isEmpty()) {
+                    orCrReq.setMvFileNumber((String) crMap.get("mvFileNumber"));
+                }
+                if (crMap.get("engineNumber") != null) {
+                    orCrReq.setEngineNumber((String) crMap.get("engineNumber"));
+                }
+                if (crMap.get("chassisNumber") != null) {
+                    orCrReq.setChassisNumber((String) crMap.get("chassisNumber"));
+                }
             }
             orCrRequestRepository.save(orCrReq);
 
