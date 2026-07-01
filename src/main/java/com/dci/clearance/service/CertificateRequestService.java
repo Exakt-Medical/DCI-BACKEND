@@ -202,41 +202,6 @@ public class CertificateRequestService {
                 }
 
                 VerificationRequest vr = vvsOpt.get();
-                VerificationVehicleDetails vd = vehicleDetailsRepo.findByVerificationId(vr.getId()).orElse(null);
-                VerificationOwnerDetails od = ownerDetailsRepo.findByVerificationId(vr.getId()).orElse(null);
-
-                boolean match = true;
-                String mismatchReason = "";
-
-                if (vd != null) {
-                    String vvsEngine = vr.getEngineNumber() != null ? vr.getEngineNumber() : "";
-                    String vvsChassis = vr.getChassisNumber() != null ? vr.getChassisNumber() : "";
-                    String vvsPlate = vr.getPlateNumber() != null ? vr.getPlateNumber() : "";
-                    String vvsMvFile = vr.getMvFileNumber() != null ? vr.getMvFileNumber() : "";
-                    java.util.List<String> mismatches = new java.util.ArrayList<>();
-                    if (!engine.equalsIgnoreCase(vvsEngine)) { mismatches.add("Engine Number mismatch"); }
-                    if (!chassis.equalsIgnoreCase(vvsChassis)) { mismatches.add("Chassis Number mismatch"); }
-                    if (!plate.isEmpty() && !plate.equalsIgnoreCase(vvsPlate)) { mismatches.add("Plate Number mismatch"); }
-                    if (!mvFile.isEmpty() && !mvFile.equalsIgnoreCase(vvsMvFile)) { mismatches.add("MV File Number mismatch"); }
-
-                    if (!mismatches.isEmpty()) {
-                        match = false;
-                        mismatchReason = String.join(", ", mismatches) + ".";
-                    }
-                } else {
-                    match = false;
-                    mismatchReason = "Vehicle details not found in VVS.";
-                }
-
-                if (od != null && match) {
-                    // Owner matching logic removed as we don't save ownerName anymore
-                }
-
-                if (!match) {
-                    savedRecord.setStatus("vehicle unmatch");
-                    repository.save(savedRecord);
-                    throw new RuntimeException("DCI validation failed: Input details do not match data in VVS system (" + mismatchReason + ").");
-                }
 
                 savedRecord.setVerificationId(vr.getId());
                 savedRecord.setStatus("DOCUMENTS_VERIFIED");
