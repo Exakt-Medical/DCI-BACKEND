@@ -14,12 +14,6 @@ public class ClearanceRequestDto {
     private String mvFileNumber;
     private String chassisNumber;
     private String engineNumber;
-    private String vehicleMake;
-    private String vehicleSeries;
-    private String vehicleYearModel;
-    private String vehicleColor;
-    private String ownerName;
-    private String ownerAddress;
     private String voucherCode;
     private Long voucherRequestId;
     private Boolean hpgVerified;

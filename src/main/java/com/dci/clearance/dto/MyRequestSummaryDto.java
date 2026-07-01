@@ -14,9 +14,6 @@ public class MyRequestSummaryDto {
     private String certificateNo;
     private String plateNumber;
     private String mvFileNumber;
-    private String ownerName;
-    private String vehicleMake;
-    private String vehicleSeries;
     private String clientName;
     private LocalDateTime dateCreated;
 }

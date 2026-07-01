@@ -144,62 +144,20 @@ public class CertificateRequestService {
             }
         }
         // 1. Persist OR/CR details if present
-        if (payload.containsKey("orCr") || payload.containsKey("crCr") || payload.containsKey("orNumber") || payload.containsKey("crNumber") || payload.containsKey("vehicleOption")) {
+        if (payload.containsKey("orCr") || payload.containsKey("crCr") || payload.containsKey("vehicleOption")) {
             OrCrRequest orCrReq = orCrRequestRepository.findByCertificateRequestId(savedRecord.getId())
                     .orElse(new OrCrRequest());
             orCrReq.setCertificateRequest(savedRecord);
 
             if (payload.get("vehicleOption") != null) orCrReq.setVehicleOption((String) payload.get("vehicleOption"));
-            if (payload.get("orNumber") != null) orCrReq.setOrNumber((String) payload.get("orNumber"));
-            if (payload.get("crNumber") != null) orCrReq.setCrNumber((String) payload.get("crNumber"));
 
-            Map<?, ?> orCr = (Map<?, ?>) payload.get("orCr");
-            Map<?, ?> crCr = (Map<?, ?>) payload.get("crCr");
 
-            java.util.Map<Object, Object> vehicleMap = new java.util.HashMap<>();
-            java.util.Set<String> orOnlyFields = java.util.Set.of("classification", "vehicleType", "fuelType");
-            java.util.Set<String> crOnlyFields = java.util.Set.of("engineNumber", "chassisNumber", "make", "series");
-
-            if (orCr != null) {
-                for (java.util.Map.Entry<?, ?> entry : orCr.entrySet()) {
-                    String key = String.valueOf(entry.getKey());
-                    if (crOnlyFields.contains(key)) {
-                        continue;
-                    }
-                    if (entry.getValue() != null) {
-                        vehicleMap.put(key, entry.getValue());
-                    }
-                }
-            }
-            if (crCr != null) {
-                for (java.util.Map.Entry<?, ?> entry : crCr.entrySet()) {
-                    String key = String.valueOf(entry.getKey());
-                    if (orOnlyFields.contains(key)) {
-                        continue;
-                    }
-                    if (entry.getValue() != null) {
-                        String valStr = String.valueOf(entry.getValue());
-                        if (crOnlyFields.contains(key) || !valStr.isBlank()) {
-                            vehicleMap.put(key, entry.getValue());
-                        }
-                    }
-                }
-            }
-
-            if (!vehicleMap.isEmpty()) {
+            if (payload.containsKey("orCr")) {
+                Map<?, ?> vehicleMap = (Map<?, ?>) payload.get("orCr");
                 if (vehicleMap.get("plateNumber") != null) orCrReq.setPlateNumber((String) vehicleMap.get("plateNumber"));
                 if (vehicleMap.get("mvFileNumber") != null) orCrReq.setMvFileNumber((String) vehicleMap.get("mvFileNumber"));
-                if (vehicleMap.get("classification") != null) orCrReq.setClassification((String) vehicleMap.get("classification"));
-                if (vehicleMap.get("vehicleType") != null) orCrReq.setVehicleType((String) vehicleMap.get("vehicleType"));
-                if (vehicleMap.get("fuelType") != null) orCrReq.setFuelType((String) vehicleMap.get("fuelType"));
                 if (vehicleMap.get("engineNumber") != null) orCrReq.setEngineNumber((String) vehicleMap.get("engineNumber"));
                 if (vehicleMap.get("chassisNumber") != null) orCrReq.setChassisNumber((String) vehicleMap.get("chassisNumber"));
-                if (vehicleMap.get("make") != null) orCrReq.setMake((String) vehicleMap.get("make"));
-                if (vehicleMap.get("series") != null) orCrReq.setSeries((String) vehicleMap.get("series"));
-                if (vehicleMap.get("yearModel") != null) orCrReq.setYearModel((String) vehicleMap.get("yearModel"));
-                if (vehicleMap.get("color") != null) orCrReq.setColor((String) vehicleMap.get("color"));
-                if (vehicleMap.get("ownerName") != null) orCrReq.setOwnerName((String) vehicleMap.get("ownerName"));
-                if (vehicleMap.get("ownerAddress") != null) orCrReq.setOwnerAddress((String) vehicleMap.get("ownerAddress"));
             }
             orCrRequestRepository.save(orCrReq);
 
@@ -238,22 +196,11 @@ public class CertificateRequestService {
                     String vvsChassis = vr.getChassisNumber() != null ? vr.getChassisNumber() : "";
                     String vvsPlate = vr.getPlateNumber() != null ? vr.getPlateNumber() : "";
                     String vvsMvFile = vr.getMvFileNumber() != null ? vr.getMvFileNumber() : "";
-                    String vvsColor = vd.getColor() != null ? vd.getColor() : "";
-                    String vvsMake = vd.getMake() != null ? vd.getMake() : "";
-                    String vvsSeries = vd.getSeries() != null ? vd.getSeries() : "";
-                    String vvsYearModel = vd.getYearModel() != null ? vd.getYearModel() : "";
-                    String vvsClassification = vd.getClassification() != null ? vd.getClassification() : "";
-
                     java.util.List<String> mismatches = new java.util.ArrayList<>();
                     if (!engine.equalsIgnoreCase(vvsEngine)) { mismatches.add("Engine Number mismatch"); }
                     if (!chassis.equalsIgnoreCase(vvsChassis)) { mismatches.add("Chassis Number mismatch"); }
                     if (!plate.isEmpty() && !plate.equalsIgnoreCase(vvsPlate)) { mismatches.add("Plate Number mismatch"); }
                     if (!mvFile.isEmpty() && !mvFile.equalsIgnoreCase(vvsMvFile)) { mismatches.add("MV File Number mismatch"); }
-                    if (orCrReq.getColor() != null && !orCrReq.getColor().isEmpty() && !orCrReq.getColor().equalsIgnoreCase(vvsColor)) { mismatches.add("Color mismatch"); }
-                    if (orCrReq.getMake() != null && !orCrReq.getMake().isEmpty() && !orCrReq.getMake().equalsIgnoreCase(vvsMake)) { mismatches.add("Make mismatch"); }
-                    if (orCrReq.getSeries() != null && !orCrReq.getSeries().isEmpty() && !orCrReq.getSeries().equalsIgnoreCase(vvsSeries)) { mismatches.add("Series mismatch"); }
-                    if (orCrReq.getYearModel() != null && !orCrReq.getYearModel().isEmpty() && !orCrReq.getYearModel().equalsIgnoreCase(vvsYearModel)) { mismatches.add("Year Model mismatch"); }
-                    if (orCrReq.getClassification() != null && !orCrReq.getClassification().isEmpty() && !orCrReq.getClassification().equalsIgnoreCase(vvsClassification)) { mismatches.add("Classification mismatch"); }
 
                     if (!mismatches.isEmpty()) {
                         match = false;
@@ -265,16 +212,7 @@ public class CertificateRequestService {
                 }
 
                 if (od != null && match) {
-                    String vvsOwner = String.format("%s %s %s", 
-                        od.getFirstName() != null ? od.getFirstName() : "",
-                        od.getMiddleName() != null ? od.getMiddleName() : "",
-                        od.getLastName() != null ? od.getLastName() : ""
-                    ).replaceAll("\\s+", " ").trim();
-
-                    if (orCrReq.getOwnerName() != null && !orCrReq.getOwnerName().isEmpty() && !orCrReq.getOwnerName().equalsIgnoreCase(vvsOwner) && !orCrReq.getOwnerName().equalsIgnoreCase(od.getOrganization())) {
-                        match = false;
-                        mismatchReason += (mismatchReason.isEmpty() ? "" : " ") + "Owner Name mismatch.";
-                    }
+                    // Owner matching logic removed as we don't save ownerName anymore
                 }
 
                 if (!match) {
@@ -341,7 +279,6 @@ public class CertificateRequestService {
                     String vEngine = orCr.getEngineNumber() != null ? orCr.getEngineNumber().trim().toUpperCase() : "";
                     String vChassis = orCr.getChassisNumber() != null ? orCr.getChassisNumber().trim().toUpperCase() : "";
                     String vPlate = orCr.getPlateNumber() != null ? orCr.getPlateNumber().trim().toUpperCase() : "";
-                    String vColor = orCr.getColor() != null ? orCr.getColor().trim().toUpperCase() : "";
 
                     if (!mvcEngine.equalsIgnoreCase(mecEngine)) {
                         throw new RuntimeException("DCI validation failed: Engine numbers do not match between MVCC and MEC.");
@@ -363,9 +300,6 @@ public class CertificateRequestService {
                     }
                     if (!mvcPlate.equalsIgnoreCase(vPlate)) {
                         throw new RuntimeException("DCI validation failed: Plate number does not match verified OR/CR details.");
-                    }
-                    if (!mvcColor.equalsIgnoreCase(vColor)) {
-                        throw new RuntimeException("DCI validation failed: Color does not match verified OR/CR details.");
                     }
                 }
             }
@@ -422,24 +356,13 @@ public class CertificateRequestService {
         OrCrRequest orCr = orCrRequestRepository.findByCertificateRequestId(record.getId()).orElse(null);
         if (orCr != null) {
             map.put("vehicleOption", orCr.getVehicleOption());
-            map.put("orNumber", orCr.getOrNumber());
-            map.put("crNumber", orCr.getCrNumber());
             map.put("plateNumber", orCr.getPlateNumber());
 
             Map<String, Object> vehicleMap = new java.util.HashMap<>();
             vehicleMap.put("plateNumber", orCr.getPlateNumber() != null ? orCr.getPlateNumber() : "");
             vehicleMap.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
-            vehicleMap.put("classification", orCr.getClassification() != null ? orCr.getClassification() : "");
-            vehicleMap.put("vehicleType", orCr.getVehicleType() != null ? orCr.getVehicleType() : "");
-            vehicleMap.put("fuelType", orCr.getFuelType() != null ? orCr.getFuelType() : "");
             vehicleMap.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
             vehicleMap.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
-            vehicleMap.put("make", orCr.getMake() != null ? orCr.getMake() : "");
-            vehicleMap.put("series", orCr.getSeries() != null ? orCr.getSeries() : "");
-            vehicleMap.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
-            vehicleMap.put("color", orCr.getColor() != null ? orCr.getColor() : "");
-            vehicleMap.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
-            vehicleMap.put("ownerAddress", orCr.getOwnerAddress() != null ? orCr.getOwnerAddress() : "");
 
             map.put("orCr", vehicleMap);
             map.put("crCr", vehicleMap);
@@ -509,11 +432,6 @@ public class CertificateRequestService {
         vehicleData.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
         vehicleData.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
         vehicleData.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
-        vehicleData.put("make", orCr.getMake() != null ? orCr.getMake() : "");
-        vehicleData.put("series", orCr.getSeries() != null ? orCr.getSeries() : "");
-        vehicleData.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
-        vehicleData.put("color", orCr.getColor() != null ? orCr.getColor() : "");
-        vehicleData.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
         
         response.put("vehicleData", vehicleData);
         return Optional.of(response);
