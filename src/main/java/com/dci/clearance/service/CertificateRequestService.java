@@ -202,41 +202,6 @@ public class CertificateRequestService {
                 }
 
                 VerificationRequest vr = vvsOpt.get();
-                VerificationVehicleDetails vd = vehicleDetailsRepo.findByVerificationId(vr.getId()).orElse(null);
-                VerificationOwnerDetails od = ownerDetailsRepo.findByVerificationId(vr.getId()).orElse(null);
-
-                boolean match = true;
-                String mismatchReason = "";
-
-                if (vd != null) {
-                    String vvsEngine = vr.getEngineNumber() != null ? vr.getEngineNumber() : "";
-                    String vvsChassis = vr.getChassisNumber() != null ? vr.getChassisNumber() : "";
-                    String vvsPlate = vr.getPlateNumber() != null ? vr.getPlateNumber() : "";
-                    String vvsMvFile = vr.getMvFileNumber() != null ? vr.getMvFileNumber() : "";
-                    java.util.List<String> mismatches = new java.util.ArrayList<>();
-                    if (!engine.equalsIgnoreCase(vvsEngine)) { mismatches.add("Engine Number mismatch"); }
-                    if (!chassis.equalsIgnoreCase(vvsChassis)) { mismatches.add("Chassis Number mismatch"); }
-                    if (!plate.isEmpty() && !plate.equalsIgnoreCase(vvsPlate)) { mismatches.add("Plate Number mismatch"); }
-                    if (!mvFile.isEmpty() && !mvFile.equalsIgnoreCase(vvsMvFile)) { mismatches.add("MV File Number mismatch"); }
-
-                    if (!mismatches.isEmpty()) {
-                        match = false;
-                        mismatchReason = String.join(", ", mismatches) + ".";
-                    }
-                } else {
-                    match = false;
-                    mismatchReason = "Vehicle details not found in VVS.";
-                }
-
-                if (od != null && match) {
-                    // Owner matching logic removed as we don't save ownerName anymore
-                }
-
-                if (!match) {
-                    savedRecord.setStatus("vehicle unmatch");
-                    repository.save(savedRecord);
-                    throw new RuntimeException("DCI validation failed: Input details do not match data in VVS system (" + mismatchReason + ").");
-                }
 
                 savedRecord.setVerificationId(vr.getId());
                 savedRecord.setStatus("DOCUMENTS_VERIFIED");
@@ -415,6 +380,37 @@ public class CertificateRequestService {
             VerificationRequest verificationRequest = verificationRequestRepo.findById(verificationId).orElse(null);
             if (verificationRequest != null) {
                 map.put("verificationStatus", verificationRequest.getVerificationStatus().toString());
+
+                VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo.findByVerificationId(verificationId).orElse(null);
+                if (vehicleDetails != null) {
+                    Map<String, Object> vMap = new java.util.HashMap<>();
+                    vMap.put("make", vehicleDetails.getMake());
+                    vMap.put("series", vehicleDetails.getSeries());
+                    vMap.put("color", vehicleDetails.getColor());
+                    vMap.put("yearModel", vehicleDetails.getYearModel());
+                    vMap.put("classification", vehicleDetails.getClassification());
+                    vMap.put("bodyType", vehicleDetails.getBodyType());
+                    vMap.put("denomination", vehicleDetails.getDenomination());
+                    vMap.put("lastRegistrationDate", vehicleDetails.getLastRegistrationDate());
+                    vMap.put("verificationId", verificationId);
+                    vMap.put("mvFileNumber", verificationRequest.getMvFileNumber());
+                    vMap.put("plateNumber", verificationRequest.getPlateNumber());
+                    vMap.put("chassisNumber", verificationRequest.getChassisNumber());
+                    vMap.put("engineNumber", verificationRequest.getEngineNumber());
+                    map.put("vvsVehicleDetails", vMap);
+                }
+
+                VerificationOwnerDetails ownerDetails = ownerDetailsRepo.findByVerificationId(verificationId).orElse(null);
+                if (ownerDetails != null) {
+                    String firstName = ownerDetails.getFirstName() != null ? ownerDetails.getFirstName() : "";
+                    String middleName = ownerDetails.getMiddleName() != null ? ownerDetails.getMiddleName() : "";
+                    String lastName = ownerDetails.getLastName() != null ? ownerDetails.getLastName() : "";
+                    String fullName = String.join(" ", java.util.Arrays.asList(firstName, middleName, lastName)).replaceAll("\\s+", " ").trim();
+                    if (fullName.isEmpty() && ownerDetails.getOrganization() != null) {
+                        fullName = ownerDetails.getOrganization();
+                    }
+                    map.put("vvsOwnerName", fullName.isEmpty() ? "Unknown Owner" : fullName);
+                }
             }
         }
 
@@ -449,6 +445,33 @@ public class CertificateRequestService {
         vehicleData.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
         vehicleData.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
         vehicleData.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
+
+        Long verificationId = record.getVerificationId();
+        if (verificationId != null) {
+            VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo.findByVerificationId(verificationId).orElse(null);
+            if (vehicleDetails != null) {
+                vehicleData.put("make", vehicleDetails.getMake());
+                vehicleData.put("series", vehicleDetails.getSeries());
+                vehicleData.put("color", vehicleDetails.getColor());
+                vehicleData.put("yearModel", vehicleDetails.getYearModel());
+                vehicleData.put("classification", vehicleDetails.getClassification());
+                vehicleData.put("bodyType", vehicleDetails.getBodyType());
+                vehicleData.put("denomination", vehicleDetails.getDenomination());
+                vehicleData.put("lastRegistrationDate", vehicleDetails.getLastRegistrationDate());
+            }
+
+            VerificationOwnerDetails ownerDetails = ownerDetailsRepo.findByVerificationId(verificationId).orElse(null);
+            if (ownerDetails != null) {
+                String firstName = ownerDetails.getFirstName() != null ? ownerDetails.getFirstName() : "";
+                String middleName = ownerDetails.getMiddleName() != null ? ownerDetails.getMiddleName() : "";
+                String lastName = ownerDetails.getLastName() != null ? ownerDetails.getLastName() : "";
+                String fullName = String.join(" ", java.util.Arrays.asList(firstName, middleName, lastName)).replaceAll("\\s+", " ").trim();
+                if (fullName.isEmpty() && ownerDetails.getOrganization() != null) {
+                    fullName = ownerDetails.getOrganization();
+                }
+                vehicleData.put("ownerName", fullName.isEmpty() ? "Unknown Owner" : fullName);
+            }
+        }
         
         response.put("vehicleData", vehicleData);
         return Optional.of(response);
