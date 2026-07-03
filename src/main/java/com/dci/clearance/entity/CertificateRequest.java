@@ -36,6 +36,9 @@ public class CertificateRequest {
     @Column(name = "voucher_code", length = 100)
     private String voucherCode;
 
+    @Column(name = "vehicle_transaction_type", length = 100)
+    private String vehicleTransactionType;
+
     @Column(name = "date_created", nullable = false)
     private LocalDateTime dateCreated;
 
