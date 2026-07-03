@@ -200,7 +200,7 @@ public class CertificateRequestService {
                 }
 
                 if (vvsOpt.isEmpty()) {
-                    savedRecord.setStatus("Unverified");
+                    savedRecord.setStatus("VERIFICATION_FAILED");
                     repository.save(savedRecord);
                     throw new RuntimeException("DCI validation failed: No matching verified vehicle record found in VVS system.");
                 }
