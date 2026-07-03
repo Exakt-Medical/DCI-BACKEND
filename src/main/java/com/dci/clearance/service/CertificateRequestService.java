@@ -95,6 +95,10 @@ public class CertificateRequestService {
             record.setVoucherCode((String) payload.get("voucherCode"));
         }
 
+        if (payload.get("transactionType") != null) {
+            record.setVehicleTransactionType((String) payload.get("transactionType"));
+        }
+
         if (payload.get("voucherId") != null) {
             Long voucherId = null;
             Object vId = payload.get("voucherId");
@@ -332,6 +336,9 @@ public class CertificateRequestService {
         }
         if (record.getCurrentStep() != null) {
             map.put("currentStep", record.getCurrentStep());
+        }
+        if (record.getVehicleTransactionType() != null) {
+            map.put("transactionType", record.getVehicleTransactionType());
         }
 
         // 1. Populate OR/CR details if present
