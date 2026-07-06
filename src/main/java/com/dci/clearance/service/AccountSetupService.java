@@ -100,7 +100,7 @@ public class AccountSetupService {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Original CTPL path (non-citizen roles: ADMIN, AGENT_FIXER, HPG, LTO)
+    // Original CTPL path (non-citizen roles: ADMIN, AGENT_FIXER, HPG, DCI)
     // ──────────────────────────────────────────────────────────────────────────
 
     private void setupCtplCompanyAndBranch(User user) {

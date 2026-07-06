@@ -452,6 +452,7 @@ public class CertificateRequestService {
         vehicleData.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
         vehicleData.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
         vehicleData.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
+        vehicleData.put("verificationStatus", record.getStatus());
 
         Long verificationId = record.getVerificationId();
         if (verificationId != null) {
@@ -485,21 +486,59 @@ public class CertificateRequestService {
     }
 
     @Transactional
-    public CertificateRequest verifyRequestByVoucherCode(String voucherCode) {
+    public CertificateRequest verifyRequestByVoucherCode(String voucherCode, User verifier, Map<String, Object> mvcData, Map<String, Object> mecData) {
         CertificateRequest record = repository.findFirstByVoucherCodeOrderByIdDesc(voucherCode)
                 .orElseThrow(() -> new RuntimeException("Certificate request not found for voucher code: " + voucherCode));
 
         Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
                 .orElseThrow(() -> new RuntimeException("Voucher not found for voucher code: " + voucherCode));
 
-        if (Boolean.TRUE.equals(voucher.getHpgVerified()) || 
-            "HPG_VERIFIED".equals(record.getStatus()) || 
-            "MVC_MEC_VALIDATED".equals(record.getStatus()) || 
-            "CERTIFICATE_ISSUED".equals(record.getStatus())) {
-            throw new RuntimeException("This request has already been verified by HPG.");
+        if (verifier.getRole() == User.UserRole.HPG) {
+            if (Boolean.TRUE.equals(voucher.getHpgVerified()) || 
+                "HPG_VERIFIED".equals(record.getStatus()) || 
+                "MVC_MEC_VALIDATED".equals(record.getStatus()) || 
+                "CERTIFICATE_ISSUED".equals(record.getStatus())) {
+                throw new RuntimeException("This request has already been verified by HPG.");
+            }
+        } else if (verifier.getRole() == User.UserRole.DCI) {
+            if ("MVC_MEC_VALIDATED".equals(record.getStatus()) || 
+                "CERTIFICATE_ISSUED".equals(record.getStatus())) {
+                throw new RuntimeException("This request has already been validated by DCI.");
+            }
+            if (!"HPG_VERIFIED".equals(record.getStatus())) {
+                throw new RuntimeException("Request must be verified by HPG before DCI validation.");
+            }
         }
 
-        record.setStatus("HPG_VERIFIED");
+        if (verifier.getRole() == User.UserRole.DCI) {
+            record.setStatus("MVC_MEC_VALIDATED");
+            if (mvcData != null || mecData != null) {
+                MvcMecRequest mvcMecReq = mvcMecRequestRepository.findByCertificateRequestId(record.getId())
+                        .orElse(new MvcMecRequest());
+                mvcMecReq.setCertificateRequest(record);
+
+                if (mvcData != null) {
+                    if (mvcData.get("mvcNo") != null) mvcMecReq.setMvcNo((String) mvcData.get("mvcNo"));
+                    if (mvcData.get("issueDate") != null) mvcMecReq.setMvcIssueDate((String) mvcData.get("issueDate"));
+                    if (mvcData.get("mvFileNo") != null) mvcMecReq.setMvFileNumber((String) mvcData.get("mvFileNo"));
+                    if (mvcData.get("engineNo") != null) mvcMecReq.setEngineNoStencilled((String) mvcData.get("engineNo"));
+                    if (mvcData.get("chassisNo") != null) mvcMecReq.setChassisNoStencilled((String) mvcData.get("chassisNo"));
+                    if (mvcData.get("plateNo") != null) mvcMecReq.setPlateNumber((String) mvcData.get("plateNo"));
+                    if (mvcData.get("color") != null) mvcMecReq.setColor((String) mvcData.get("color"));
+                }
+                
+                if (mecData != null) {
+                    if (mecData.get("engineNoStencilled") != null) mvcMecReq.setEngineNoStencilled((String) mecData.get("engineNoStencilled"));
+                    if (mecData.get("chassisNoStencilled") != null) mvcMecReq.setChassisNoStencilled((String) mecData.get("chassisNoStencilled"));
+                }
+
+                mvcMecRequestRepository.save(mvcMecReq);
+            }
+        } else {
+            record.setStatus("HPG_VERIFIED");
+            voucher.setHpgVerified(true);
+            voucherRepository.save(voucher);
+        }
 
         if (record.getUser() != null) {
             User.UserRole userRole = record.getUser().getRole();
@@ -510,8 +549,7 @@ public class CertificateRequestService {
             }
         }
 
-        voucher.setHpgVerified(true);
-        voucherRepository.save(voucher);
+
 
         return repository.save(record);
     }

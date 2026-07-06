@@ -61,7 +61,7 @@ public class TicketController {
     }
 
     @PatchMapping("/{id}/escalate")
-    @Operation(summary = "Escalate ticket to LTO or other department")
+    @Operation(summary = "Escalate ticket to DCI or other department")
     public ResponseEntity<SupportTicket> escalateTicket(@PathVariable Long id, @RequestParam String escalateTo) {
         return ResponseEntity.ok(ticketService.escalateTicket(id, escalateTo));
     }

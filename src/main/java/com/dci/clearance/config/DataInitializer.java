@@ -59,8 +59,8 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.save(Role.builder().roleId("CITIZEN").roleName("Citizen").build());
             roleRepository.save(Role.builder().roleId("AGENT_FIXER").roleName("Agent/Fixer").build());
             roleRepository.save(Role.builder().roleId("HPG").roleName("Highway Patrol Group").build());
-            roleRepository.save(Role.builder().roleId("LTO").roleName("Land Transportation Office").build());
-            roleRepository.save(Role.builder().roleId("ADMIN").roleName("Administrator").build());
+            roleRepository.save(Role.builder().roleId("DCI").roleName("DCI Officer").build());
+            roleRepository.save(Role.builder().roleId("ADMIN").roleName("System Administrator").build());
         }
     }
 
@@ -107,12 +107,12 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
 
             userRepository.save(User.builder()
-                    .username("lto")
-                    .password(passwordEncoder.encode("lto123"))
-                    .firstName("LTO")
+                    .username("dci")
+                    .password(passwordEncoder.encode("dci123"))
+                    .firstName("DCI")
                     .lastName("Officer")
-                    .email("lto@dci.gov.ph")
-                    .role(User.UserRole.LTO)
+                    .email("dci@dci.gov.ph")
+                    .role(User.UserRole.DCI)
                     .status("ACTIVE")
                     .build());
         }
@@ -122,7 +122,7 @@ public class DataInitializer implements CommandLineRunner {
     //     List<User> users = userRepository.findAll();
     //     for (User user : users) {
     //         if (user.getCompanyCode() != null && user.getBranchRef() != null) continue;
-    //         if (user.getRole() == User.UserRole.HPG || user.getRole() == User.UserRole.LTO) continue;
+    //         if (user.getRole() == User.UserRole.HPG || user.getRole() == User.UserRole.DCI) continue;
 
     //         String code = "CMP-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     //         String branchId = "BRN-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();

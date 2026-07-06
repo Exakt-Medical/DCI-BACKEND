@@ -16,7 +16,7 @@ public class DashboardController {
     private final TransactionLogService transactionLogService;
 
     @GetMapping("/data")
-    @PreAuthorize("hasAnyRole('ADMIN', 'HPG', 'LTO')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HPG', 'DCI')")
     public ResponseEntity<DashboardResponseDto> getDashboardData(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "8") int size) {

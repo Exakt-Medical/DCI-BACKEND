@@ -37,7 +37,7 @@ public class UserManagementController {
     }
 
     @GetMapping("/by-role/{role}")
-    @Operation(summary = "Get users by role (CITIZEN, AGENT_FIXER, HPG, LTO, ADMIN)")
+    @Operation(summary = "Get users by role (CITIZEN, AGENT_FIXER, HPG, DCI, ADMIN)")
     public ResponseEntity<List<UserResponse>> getByRole(@PathVariable String role) {
         return ResponseEntity.ok(userManagementService.getByRole(role));
     }
