@@ -1,12 +1,16 @@
 package com.dci.clearance.controller;
 
 import com.dci.clearance.entity.CertificateRequest;
+import com.dci.clearance.entity.User;
 import com.dci.clearance.repository.UserRepository;
 import com.dci.clearance.service.CertificateRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.List;
 import java.util.Map;
@@ -58,10 +62,29 @@ public class CertificateRequestController {
     }
 
     @PostMapping("/by-voucher/{voucherCode}/verify")
-    public ResponseEntity<?> verifyRequestByVoucher(@PathVariable String voucherCode) {
+    public ResponseEntity<?> verifyRequestByVoucher(
+            @PathVariable String voucherCode,
+            @RequestParam(value = "mvcc", required = false) MultipartFile mvcc,
+            @RequestParam(value = "mec", required = false) MultipartFile mec,
+            @RequestParam(value = "mvcData", required = false) String mvcDataStr,
+            @RequestParam(value = "mecData", required = false) String mecDataStr,
+            Authentication auth) {
         try {
-            CertificateRequest saved = service.verifyRequestByVoucherCode(voucherCode);
-            return ResponseEntity.ok(Map.of("message", "Voucher verified by HPG successfully", "id", saved.getId()));
+            Long userId = getUserId(auth);
+            User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+            
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> mvcData = null;
+            Map<String, Object> mecData = null;
+            if (mvcDataStr != null && !mvcDataStr.isEmpty()) {
+                mvcData = mapper.readValue(mvcDataStr, new TypeReference<Map<String, Object>>() {});
+            }
+            if (mecDataStr != null && !mecDataStr.isEmpty()) {
+                mecData = mapper.readValue(mecDataStr, new TypeReference<Map<String, Object>>() {});
+            }
+
+            CertificateRequest saved = service.verifyRequestByVoucherCode(voucherCode, user, mvcData, mecData);
+            return ResponseEntity.ok(Map.of("message", "Voucher verified successfully", "id", saved.getId(), "status", saved.getStatus()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
