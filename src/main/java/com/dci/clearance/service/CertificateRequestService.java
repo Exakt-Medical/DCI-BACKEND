@@ -448,13 +448,26 @@ public class CertificateRequestService {
         response.put("status", record.getStatus());
         
         Map<String, Object> vehicleData = new java.util.HashMap<>();
-        vehicleData.put("plateNumber", orCr.getPlateNumber() != null ? orCr.getPlateNumber() : "");
-        vehicleData.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
-        vehicleData.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
-        vehicleData.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
+        
+        Long verificationId = record.getVerificationId();
+        VerificationRequest vvsReq = null;
+        if (verificationId != null) {
+            vvsReq = verificationRequestRepo.findById(verificationId).orElse(null);
+        }
+        
+        if (vvsReq != null) {
+            vehicleData.put("plateNumber", vvsReq.getPlateNumber() != null ? vvsReq.getPlateNumber() : "");
+            vehicleData.put("mvFileNumber", vvsReq.getMvFileNumber() != null ? vvsReq.getMvFileNumber() : "");
+            vehicleData.put("engineNumber", vvsReq.getEngineNumber() != null ? vvsReq.getEngineNumber() : "");
+            vehicleData.put("chassisNumber", vvsReq.getChassisNumber() != null ? vvsReq.getChassisNumber() : "");
+        } else {
+            vehicleData.put("plateNumber", orCr.getPlateNumber() != null ? orCr.getPlateNumber() : "");
+            vehicleData.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
+            vehicleData.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
+            vehicleData.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
+        }
         vehicleData.put("verificationStatus", record.getStatus());
 
-        Long verificationId = record.getVerificationId();
         if (verificationId != null) {
             VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo.findByVerificationId(verificationId).orElse(null);
             if (vehicleDetails != null) {
