@@ -37,6 +37,17 @@ public class CertificateRequestController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getRequestById(@PathVariable Long id, Authentication auth) {
+        Optional<CertificateRequest> opt = service.getRequestById(id);
+        if (opt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        CertificateRequest record = opt.get();
+        // Option 1: allow anyone who is authenticated to poll (for simplicity, or restrict by userId)
+        return ResponseEntity.ok(service.getRequestPayload(record));
+    }
+
     @PostMapping
     public ResponseEntity<?> upsertRequest(@RequestBody Map<String, Object> payload, Authentication auth) {
         Long userId = getUserId(auth);

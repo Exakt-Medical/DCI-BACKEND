@@ -42,6 +42,10 @@ public class CertificateRequestService {
         return repository.findByUserIdOrderByDateUpdatedDesc(userId);
     }
 
+    public Optional<CertificateRequest> getRequestById(Long id) {
+        return repository.findById(id);
+    }
+
     @Transactional
     public CertificateRequest upsertRequest(Long userId, Map<String, Object> payload) {
         Object idObj = payload.get("id");
@@ -506,14 +510,31 @@ public class CertificateRequestService {
         Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
                 .orElseThrow(() -> new RuntimeException("Voucher not found for voucher code: " + voucherCode));
 
+        boolean isDoingHpgVerification = false;
+
         if (verifier.getRole() == User.UserRole.HPG) {
+            isDoingHpgVerification = true;
+        } else if (verifier.getRole() == User.UserRole.DCI) {
+            if (!"HPG_VERIFIED".equals(record.getStatus()) && 
+                !"MVC_MEC_VALIDATED".equals(record.getStatus()) && 
+                !"CERTIFICATE_ISSUED".equals(record.getStatus())) {
+                isDoingHpgVerification = true;
+            }
+        } else {
+            throw new RuntimeException("Unauthorized role for verification");
+        }
+
+        if (isDoingHpgVerification) {
             if (Boolean.TRUE.equals(voucher.getHpgVerified()) || 
                 "HPG_VERIFIED".equals(record.getStatus()) || 
                 "MVC_MEC_VALIDATED".equals(record.getStatus()) || 
                 "CERTIFICATE_ISSUED".equals(record.getStatus())) {
                 throw new RuntimeException("This request has already been verified by HPG.");
             }
-        } else if (verifier.getRole() == User.UserRole.DCI) {
+            record.setStatus("HPG_VERIFIED");
+            voucher.setHpgVerified(true);
+            voucherRepository.save(voucher);
+        } else {
             if ("MVC_MEC_VALIDATED".equals(record.getStatus()) || 
                 "CERTIFICATE_ISSUED".equals(record.getStatus())) {
                 throw new RuntimeException("This request has already been validated by DCI.");
@@ -521,9 +542,7 @@ public class CertificateRequestService {
             if (!"HPG_VERIFIED".equals(record.getStatus())) {
                 throw new RuntimeException("Request must be verified by HPG before DCI validation.");
             }
-        }
 
-        if (verifier.getRole() == User.UserRole.DCI) {
             record.setStatus("MVC_MEC_VALIDATED");
             if (mvcData != null || mecData != null) {
                 MvcMecRequest mvcMecReq = mvcMecRequestRepository.findByCertificateRequestId(record.getId())
@@ -547,10 +566,6 @@ public class CertificateRequestService {
 
                 mvcMecRequestRepository.save(mvcMecReq);
             }
-        } else {
-            record.setStatus("HPG_VERIFIED");
-            voucher.setHpgVerified(true);
-            voucherRepository.save(voucher);
         }
 
         if (record.getUser() != null) {
