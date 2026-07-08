@@ -344,6 +344,12 @@ public class CertificateRequestService {
         if (record.getVehicleTransactionType() != null) {
             map.put("transactionType", record.getVehicleTransactionType());
         }
+        if (record.getDateCreated() != null) {
+            map.put("dateCreated", record.getDateCreated().toString());
+        }
+        if (record.getDateUpdated() != null) {
+            map.put("dateUpdated", record.getDateUpdated().toString());
+        }
 
         // 1. Populate OR/CR details if present
         OrCrRequest orCr = orCrRequestRepository.findByCertificateRequestId(record.getId()).orElse(null);
