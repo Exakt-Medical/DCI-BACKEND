@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -28,6 +29,7 @@ public class BillerooWebhookService {
     @Value("${merchant-callback.billero-token}")
     private String expectedAuthToken;
 
+    @Transactional
     public void processWebhook(String authorizationHeader, BillerooWebhookRequest request) {
         // 1. Validate Billeroo auth token
         validateAuthKey(authorizationHeader);
@@ -64,6 +66,7 @@ public class BillerooWebhookService {
         }
     }
 
+    @Transactional
     public void processVoucherRedeemWebhook(String authorizationHeader, VoucherRedeemWebhookDto request) {
         validateAuthKey(authorizationHeader);
 
