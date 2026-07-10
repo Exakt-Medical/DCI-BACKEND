@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface VerificationOwnerDetailsRepository extends JpaRepository<VerificationOwnerDetails, Long> {
     Optional<VerificationOwnerDetails> findByVerificationId(Long verificationId);
+    java.util.List<VerificationOwnerDetails> findByVerificationIdIn(java.util.List<Long> verificationIds);
 }

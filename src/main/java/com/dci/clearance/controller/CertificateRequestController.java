@@ -29,10 +29,7 @@ public class CertificateRequestController {
     public ResponseEntity<?> getMyRequests(Authentication auth) {
         Long userId = getUserId(auth);
         List<CertificateRequest> records = service.getMyRequests(userId);
-        
-        List<Map<String, Object>> response = records.stream()
-                .map(service::getRequestPayload)
-                .collect(Collectors.toList());
+        List<Map<String, Object>> response = service.getRequestPayloads(records);
 
         return ResponseEntity.ok(response);
     }
