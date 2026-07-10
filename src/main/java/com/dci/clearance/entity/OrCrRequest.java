@@ -33,6 +33,24 @@ public class OrCrRequest {
     @Column(name = "chassis_number", length = 100)
     private String chassisNumber;
 
+    @Column(name = "make_brand", length = 100)
+    private String makeBrand;
+
+    @Column(name = "color", length = 50)
+    private String color;
+
+    @Column(name = "classification", length = 50)
+    private String classification;
+
+    @Column(name = "series", length = 100)
+    private String series;
+
+    @Column(name = "year_model", length = 50)
+    private String yearModel;
+
+    @Column(name = "owner_name", length = 255)
+    private String ownerName;
+
     @CreationTimestamp
     @Column(name = "date_created", nullable = false, updatable = false)
     private LocalDateTime dateCreated;
