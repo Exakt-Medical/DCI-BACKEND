@@ -168,6 +168,14 @@ public class CertificateRequestService {
                 if (orMap.get("mvFileNumber") != null && !((String)orMap.get("mvFileNumber")).isEmpty()) {
                     orCrReq.setMvFileNumber((String) orMap.get("mvFileNumber"));
                 }
+                if (orMap.get("engineNumber") != null) orCrReq.setEngineNumber((String) orMap.get("engineNumber"));
+                if (orMap.get("chassisNumber") != null) orCrReq.setChassisNumber((String) orMap.get("chassisNumber"));
+                if (orMap.get("makeBrand") != null) orCrReq.setMakeBrand((String) orMap.get("makeBrand"));
+                if (orMap.get("color") != null) orCrReq.setColor((String) orMap.get("color"));
+                if (orMap.get("classification") != null) orCrReq.setClassification((String) orMap.get("classification"));
+                if (orMap.get("series") != null) orCrReq.setSeries((String) orMap.get("series"));
+                if (orMap.get("yearModel") != null) orCrReq.setYearModel((String) orMap.get("yearModel"));
+                if (orMap.get("ownerName") != null) orCrReq.setOwnerName((String) orMap.get("ownerName"));
             }
             if (payload.containsKey("crCr")) {
                 Map<?, ?> crMap = (Map<?, ?>) payload.get("crCr");
@@ -182,6 +190,24 @@ public class CertificateRequestService {
                 }
                 if (crMap.get("chassisNumber") != null) {
                     orCrReq.setChassisNumber((String) crMap.get("chassisNumber"));
+                }
+                if (crMap.get("makeBrand") != null) {
+                    orCrReq.setMakeBrand((String) crMap.get("makeBrand"));
+                }
+                if (crMap.get("color") != null) {
+                    orCrReq.setColor((String) crMap.get("color"));
+                }
+                if (crMap.get("classification") != null) {
+                    orCrReq.setClassification((String) crMap.get("classification"));
+                }
+                if (crMap.get("series") != null) {
+                    orCrReq.setSeries((String) crMap.get("series"));
+                }
+                if (crMap.get("yearModel") != null) {
+                    orCrReq.setYearModel((String) crMap.get("yearModel"));
+                }
+                if (crMap.get("ownerName") != null) {
+                    orCrReq.setOwnerName((String) crMap.get("ownerName"));
                 }
             }
             orCrRequestRepository.save(orCrReq);
@@ -362,6 +388,12 @@ public class CertificateRequestService {
             vehicleMap.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
             vehicleMap.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
             vehicleMap.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
+            vehicleMap.put("makeBrand", orCr.getMakeBrand() != null ? orCr.getMakeBrand() : "");
+            vehicleMap.put("color", orCr.getColor() != null ? orCr.getColor() : "");
+            vehicleMap.put("classification", orCr.getClassification() != null ? orCr.getClassification() : "");
+            vehicleMap.put("series", orCr.getSeries() != null ? orCr.getSeries() : "");
+            vehicleMap.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
+            vehicleMap.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
 
             map.put("orCr", vehicleMap);
             map.put("crCr", vehicleMap);
