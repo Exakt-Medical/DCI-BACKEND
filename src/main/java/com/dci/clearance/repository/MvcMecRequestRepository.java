@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface MvcMecRequestRepository extends JpaRepository<MvcMecRequest, Long> {
     Optional<MvcMecRequest> findByCertificateRequestId(Long certificateRequestId);
+    java.util.List<MvcMecRequest> findByCertificateRequestIdIn(java.util.List<Long> certificateRequestIds);
 }

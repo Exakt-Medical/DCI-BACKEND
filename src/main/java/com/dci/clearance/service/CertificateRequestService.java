@@ -343,127 +343,139 @@ public class CertificateRequestService {
         return savedRecord;
     }
 
-    public Map<String, Object> getRequestPayload(CertificateRequest record) {
-        Map<String, Object> map = new java.util.HashMap<>();
-        
-        map.put("id", record.getId());
-        if (record.getUser() != null) {
-            map.put("userId", record.getUser().getId());
-        }
-        if (record.getCertificateNo() != null) {
-            map.put("certificateNo", record.getCertificateNo());
-            map.put("clearanceReferenceNo", record.getCertificateNo());
-        }
-        if (record.getVoucherCode() != null) {
-            map.put("voucherCode", record.getVoucherCode());
-            map.put("voucherReferenceNo", record.getVoucherCode());
-        }
-        if (record.getVoucher() != null) {
-            map.put("voucherId", record.getVoucher().getId());
-        }
-        if (record.getStatus() != null) {
-            map.put("status", record.getStatus());
-        }
-        if (record.getCurrentStep() != null) {
-            map.put("currentStep", record.getCurrentStep());
-        }
-        if (record.getVehicleTransactionType() != null) {
-            map.put("transactionType", record.getVehicleTransactionType());
-        }
-        if (record.getDateCreated() != null) {
-            map.put("dateCreated", record.getDateCreated().toString());
-        }
-        if (record.getDateUpdated() != null) {
-            map.put("dateUpdated", record.getDateUpdated().toString());
+    public List<Map<String, Object>> getRequestPayloads(List<CertificateRequest> records) {
+        if (records == null || records.isEmpty()) return java.util.Collections.emptyList();
+
+        List<Long> requestIds = records.stream().map(CertificateRequest::getId).collect(java.util.stream.Collectors.toList());
+        List<Long> verificationIds = records.stream().map(CertificateRequest::getVerificationId).filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toList());
+
+        Map<Long, OrCrRequest> orCrMap = orCrRequestRepository.findByCertificateRequestIdIn(requestIds)
+                .stream().collect(java.util.stream.Collectors.toMap(req -> req.getCertificateRequest().getId(), req -> req, (existing, replacement) -> existing));
+
+        Map<Long, MvcMecRequest> mvcMecMap = mvcMecRequestRepository.findByCertificateRequestIdIn(requestIds)
+                .stream().collect(java.util.stream.Collectors.toMap(req -> req.getCertificateRequest().getId(), req -> req, (existing, replacement) -> existing));
+
+        final Map<Long, VerificationRequest> verificationMap = new java.util.HashMap<>();
+        final Map<Long, VerificationVehicleDetails> vehicleDetailsMap = new java.util.HashMap<>();
+        final Map<Long, VerificationOwnerDetails> ownerDetailsMap = new java.util.HashMap<>();
+
+        if (!verificationIds.isEmpty()) {
+            verificationMap.putAll(verificationRequestRepo.findAllById(verificationIds)
+                    .stream().collect(java.util.stream.Collectors.toMap(VerificationRequest::getId, v -> v, (existing, replacement) -> existing)));
+            vehicleDetailsMap.putAll(vehicleDetailsRepo.findByVerificationIdIn(verificationIds)
+                    .stream().collect(java.util.stream.Collectors.toMap(VerificationVehicleDetails::getVerificationId, v -> v, (existing, replacement) -> existing)));
+            ownerDetailsMap.putAll(ownerDetailsRepo.findByVerificationIdIn(verificationIds)
+                    .stream().collect(java.util.stream.Collectors.toMap(VerificationOwnerDetails::getVerificationId, v -> v, (existing, replacement) -> existing)));
         }
 
-        // 1. Populate OR/CR details if present
-        OrCrRequest orCr = orCrRequestRepository.findByCertificateRequestId(record.getId()).orElse(null);
-        if (orCr != null) {
-            map.put("vehicleOption", orCr.getVehicleOption());
-            map.put("plateNumber", orCr.getPlateNumber());
+        return records.stream().map(record -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", record.getId());
+            if (record.getUser() != null) map.put("userId", record.getUser().getId());
+            if (record.getCertificateNo() != null) {
+                map.put("certificateNo", record.getCertificateNo());
+                map.put("clearanceReferenceNo", record.getCertificateNo());
+            }
+            if (record.getVoucherCode() != null) {
+                map.put("voucherCode", record.getVoucherCode());
+                map.put("voucherReferenceNo", record.getVoucherCode());
+            }
+            if (record.getVoucher() != null) map.put("voucherId", record.getVoucher().getId());
+            if (record.getStatus() != null) map.put("status", record.getStatus());
+            if (record.getCurrentStep() != null) map.put("currentStep", record.getCurrentStep());
+            if (record.getVehicleTransactionType() != null) map.put("transactionType", record.getVehicleTransactionType());
+            if (record.getDateCreated() != null) map.put("dateCreated", record.getDateCreated().toString());
+            if (record.getDateUpdated() != null) map.put("dateUpdated", record.getDateUpdated().toString());
 
-            Map<String, Object> vehicleMap = new java.util.HashMap<>();
-            vehicleMap.put("plateNumber", orCr.getPlateNumber() != null ? orCr.getPlateNumber() : "");
-            vehicleMap.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
-            vehicleMap.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
-            vehicleMap.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
-            vehicleMap.put("makeBrand", orCr.getMakeBrand() != null ? orCr.getMakeBrand() : "");
-            vehicleMap.put("color", orCr.getColor() != null ? orCr.getColor() : "");
-            vehicleMap.put("classification", orCr.getClassification() != null ? orCr.getClassification() : "");
-            vehicleMap.put("series", orCr.getSeries() != null ? orCr.getSeries() : "");
-            vehicleMap.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
-            vehicleMap.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
+            OrCrRequest orCr = orCrMap.get(record.getId());
+            if (orCr != null) {
+                map.put("vehicleOption", orCr.getVehicleOption());
+                map.put("plateNumber", orCr.getPlateNumber());
 
-            map.put("orCr", vehicleMap);
-            map.put("crCr", vehicleMap);
-        }
+                Map<String, Object> vehicleMap = new java.util.HashMap<>();
+                vehicleMap.put("plateNumber", orCr.getPlateNumber() != null ? orCr.getPlateNumber() : "");
+                vehicleMap.put("mvFileNumber", orCr.getMvFileNumber() != null ? orCr.getMvFileNumber() : "");
+                vehicleMap.put("engineNumber", orCr.getEngineNumber() != null ? orCr.getEngineNumber() : "");
+                vehicleMap.put("chassisNumber", orCr.getChassisNumber() != null ? orCr.getChassisNumber() : "");
+                vehicleMap.put("makeBrand", orCr.getMakeBrand() != null ? orCr.getMakeBrand() : "");
+                vehicleMap.put("color", orCr.getColor() != null ? orCr.getColor() : "");
+                vehicleMap.put("classification", orCr.getClassification() != null ? orCr.getClassification() : "");
+                vehicleMap.put("series", orCr.getSeries() != null ? orCr.getSeries() : "");
+                vehicleMap.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
+                vehicleMap.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
 
-        // 2. Populate MVCC/MEC details if present
-        MvcMecRequest mvcMec = mvcMecRequestRepository.findByCertificateRequestId(record.getId()).orElse(null);
-        if (mvcMec != null) {
-            Map<String, Object> mvcMap = new java.util.HashMap<>();
-            mvcMap.put("mvcNo", mvcMec.getMvcNo() != null ? mvcMec.getMvcNo() : "");
-            mvcMap.put("mvcIssueDate", mvcMec.getMvcIssueDate() != null ? mvcMec.getMvcIssueDate() : "");
-            mvcMap.put("mvcStatus", mvcMec.getMvcStatus() != null ? mvcMec.getMvcStatus() : "");
-            mvcMap.put("remarks", mvcMec.getRemarks() != null ? mvcMec.getRemarks() : "");
-            mvcMap.put("plateNumber", mvcMec.getPlateNumber() != null ? mvcMec.getPlateNumber() : "");
-            mvcMap.put("mvFileNumber", mvcMec.getMvFileNumber() != null ? mvcMec.getMvFileNumber() : "");
-            mvcMap.put("color", mvcMec.getColor() != null ? mvcMec.getColor() : "");
-            mvcMap.put("engineNo", mvcMec.getEngineNoStencilled() != null ? mvcMec.getEngineNoStencilled() : "");
-            mvcMap.put("chassisNo", mvcMec.getChassisNoStencilled() != null ? mvcMec.getChassisNoStencilled() : "");
+                map.put("orCr", vehicleMap);
+                map.put("crCr", vehicleMap);
+            }
 
-            Map<String, Object> mecMap = new java.util.HashMap<>();
-            mecMap.put("engineNoStencilled", mvcMec.getEngineNoStencilled() != null ? mvcMec.getEngineNoStencilled() : "");
-            mecMap.put("chassisNoStencilled", mvcMec.getChassisNoStencilled() != null ? mvcMec.getChassisNoStencilled() : "");
-            mecMap.put("hpgTechnician", mvcMec.getHpgTechnician() != null ? mvcMec.getHpgTechnician() : "");
+            MvcMecRequest mvcMec = mvcMecMap.get(record.getId());
+            if (mvcMec != null) {
+                Map<String, Object> mvcMap = new java.util.HashMap<>();
+                mvcMap.put("mvcNo", mvcMec.getMvcNo() != null ? mvcMec.getMvcNo() : "");
+                mvcMap.put("mvcIssueDate", mvcMec.getMvcIssueDate() != null ? mvcMec.getMvcIssueDate() : "");
+                mvcMap.put("mvcStatus", mvcMec.getMvcStatus() != null ? mvcMec.getMvcStatus() : "");
+                mvcMap.put("remarks", mvcMec.getRemarks() != null ? mvcMec.getRemarks() : "");
+                mvcMap.put("plateNumber", mvcMec.getPlateNumber() != null ? mvcMec.getPlateNumber() : "");
+                mvcMap.put("mvFileNumber", mvcMec.getMvFileNumber() != null ? mvcMec.getMvFileNumber() : "");
+                mvcMap.put("color", mvcMec.getColor() != null ? mvcMec.getColor() : "");
+                mvcMap.put("engineNo", mvcMec.getEngineNoStencilled() != null ? mvcMec.getEngineNoStencilled() : "");
+                mvcMap.put("chassisNo", mvcMec.getChassisNoStencilled() != null ? mvcMec.getChassisNoStencilled() : "");
 
-            map.put("mvcData", mvcMap);
-            map.put("mecData", mecMap);
-        }
+                Map<String, Object> mecMap = new java.util.HashMap<>();
+                mecMap.put("engineNoStencilled", mvcMec.getEngineNoStencilled() != null ? mvcMec.getEngineNoStencilled() : "");
+                mecMap.put("chassisNoStencilled", mvcMec.getChassisNoStencilled() != null ? mvcMec.getChassisNoStencilled() : "");
+                mecMap.put("hpgTechnician", mvcMec.getHpgTechnician() != null ? mvcMec.getHpgTechnician() : "");
 
-        // 3. Keep the validationId VVS logic if matching verification exists
-        Long verificationId = record.getVerificationId();
-        if (verificationId != null) {
-            map.put("verificationId", verificationId);
-            VerificationRequest verificationRequest = verificationRequestRepo.findById(verificationId).orElse(null);
-            if (verificationRequest != null) {
-                map.put("verificationStatus", verificationRequest.getVerificationStatus().toString());
+                map.put("mvcData", mvcMap);
+                map.put("mecData", mecMap);
+            }
 
-                VerificationVehicleDetails vehicleDetails = vehicleDetailsRepo.findByVerificationId(verificationId).orElse(null);
-                if (vehicleDetails != null) {
-                    Map<String, Object> vMap = new java.util.HashMap<>();
-                    vMap.put("make", vehicleDetails.getMake());
-                    vMap.put("series", vehicleDetails.getSeries());
-                    vMap.put("color", vehicleDetails.getColor());
-                    vMap.put("yearModel", vehicleDetails.getYearModel());
-                    vMap.put("classification", vehicleDetails.getClassification());
-                    vMap.put("bodyType", vehicleDetails.getBodyType());
-                    vMap.put("denomination", vehicleDetails.getDenomination());
-                    vMap.put("lastRegistrationDate", vehicleDetails.getLastRegistrationDate());
-                    vMap.put("verificationId", verificationId);
-                    vMap.put("mvFileNumber", verificationRequest.getMvFileNumber());
-                    vMap.put("plateNumber", verificationRequest.getPlateNumber());
-                    vMap.put("chassisNumber", verificationRequest.getChassisNumber());
-                    vMap.put("engineNumber", verificationRequest.getEngineNumber());
-                    map.put("vvsVehicleDetails", vMap);
-                }
+            Long verificationId = record.getVerificationId();
+            if (verificationId != null) {
+                map.put("verificationId", verificationId);
+                VerificationRequest verificationRequest = verificationMap.get(verificationId);
+                if (verificationRequest != null) {
+                    map.put("verificationStatus", verificationRequest.getVerificationStatus().toString());
 
-                VerificationOwnerDetails ownerDetails = ownerDetailsRepo.findByVerificationId(verificationId).orElse(null);
-                if (ownerDetails != null) {
-                    String firstName = ownerDetails.getFirstName() != null ? ownerDetails.getFirstName() : "";
-                    String middleName = ownerDetails.getMiddleName() != null ? ownerDetails.getMiddleName() : "";
-                    String lastName = ownerDetails.getLastName() != null ? ownerDetails.getLastName() : "";
-                    String fullName = String.join(" ", java.util.Arrays.asList(firstName, middleName, lastName)).replaceAll("\\s+", " ").trim();
-                    if (fullName.isEmpty() && ownerDetails.getOrganization() != null) {
-                        fullName = ownerDetails.getOrganization();
+                    VerificationVehicleDetails vehicleDetails = vehicleDetailsMap.get(verificationId);
+                    if (vehicleDetails != null) {
+                        Map<String, Object> vMap = new java.util.HashMap<>();
+                        vMap.put("make", vehicleDetails.getMake());
+                        vMap.put("series", vehicleDetails.getSeries());
+                        vMap.put("color", vehicleDetails.getColor());
+                        vMap.put("yearModel", vehicleDetails.getYearModel());
+                        vMap.put("classification", vehicleDetails.getClassification());
+                        vMap.put("bodyType", vehicleDetails.getBodyType());
+                        vMap.put("denomination", vehicleDetails.getDenomination());
+                        vMap.put("lastRegistrationDate", vehicleDetails.getLastRegistrationDate());
+                        vMap.put("verificationId", verificationId);
+                        vMap.put("mvFileNumber", verificationRequest.getMvFileNumber());
+                        vMap.put("plateNumber", verificationRequest.getPlateNumber());
+                        vMap.put("chassisNumber", verificationRequest.getChassisNumber());
+                        vMap.put("engineNumber", verificationRequest.getEngineNumber());
+                        map.put("vvsVehicleDetails", vMap);
                     }
-                    map.put("vvsOwnerName", fullName.isEmpty() ? "Unknown Owner" : fullName);
+
+                    VerificationOwnerDetails ownerDetails = ownerDetailsMap.get(verificationId);
+                    if (ownerDetails != null) {
+                        String firstName = ownerDetails.getFirstName() != null ? ownerDetails.getFirstName() : "";
+                        String middleName = ownerDetails.getMiddleName() != null ? ownerDetails.getMiddleName() : "";
+                        String lastName = ownerDetails.getLastName() != null ? ownerDetails.getLastName() : "";
+                        String fullName = String.join(" ", java.util.Arrays.asList(firstName, middleName, lastName)).replaceAll("\\s+", " ").trim();
+                        if (fullName.isEmpty() && ownerDetails.getOrganization() != null) {
+                            fullName = ownerDetails.getOrganization();
+                        }
+                        map.put("vvsOwnerName", fullName.isEmpty() ? "Unknown Owner" : fullName);
+                    }
                 }
             }
-        }
 
-        return map;
+            return map;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    public Map<String, Object> getRequestPayload(CertificateRequest record) {
+        return getRequestPayloads(java.util.Collections.singletonList(record)).get(0);
     }
 
     public Optional<Map<String, Object>> getVerificationDetailsByVoucherCode(String voucherCode) {
