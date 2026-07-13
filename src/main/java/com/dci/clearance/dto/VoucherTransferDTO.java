@@ -20,4 +20,7 @@ public class VoucherTransferDTO {
     private String createdAt;
     private String updatedAt;
     private String expiresAt;
+    private String assignedToPlate;
+    private Long assignedToId;
+    private String computedStatus;
 }

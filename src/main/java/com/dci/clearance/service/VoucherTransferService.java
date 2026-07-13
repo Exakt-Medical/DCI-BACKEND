@@ -9,6 +9,12 @@ import com.dci.clearance.entity.VoucherTransferLog;
 import com.dci.clearance.repository.UserRepository;
 import com.dci.clearance.repository.VoucherTransferLogRepository;
 import com.dci.clearance.repository.VoucherTransferRepository;
+import com.dci.clearance.repository.CertificateRequestRepository;
+import com.dci.clearance.repository.OrCrRequestRepository;
+import com.dci.clearance.repository.MvcMecRequestRepository;
+import com.dci.clearance.entity.CertificateRequest;
+import com.dci.clearance.entity.OrCrRequest;
+import com.dci.clearance.entity.MvcMecRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +37,9 @@ public class VoucherTransferService {
     private final VoucherTransferRepository voucherRepository;
     private final VoucherTransferLogRepository transferLogRepository;
     private final UserRepository userRepository;
+    private final CertificateRequestRepository certificateRequestRepository;
+    private final OrCrRequestRepository orCrRequestRepository;
+    private final MvcMecRequestRepository mvcMecRequestRepository;
 
     private static final ZoneId MANILA = ZoneId.of("Asia/Manila");
     private static final long VOUCHER_VALUE = 60L;
@@ -104,6 +113,82 @@ public class VoucherTransferService {
         return voucherRepository
                 .findAvailableByUserIdPaginated(userId, search == null ? "" : search, pageable)
                 .map(this::mapToResponse);
+    }
+
+    public Map<String, Object> getAgentInventoryPaginated(Long userId, int page, int size, String search, String statusFilter) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        String activeFilter = (statusFilter == null || statusFilter.isEmpty()) ? "ALL" : statusFilter.toUpperCase();
+        String safeSearch = (search == null) ? "" : search;
+
+        Page<VoucherTransferEntity> pagedResult = voucherRepository.findPaginatedAndFiltered(
+                userId, activeFilter, safeSearch, pageable);
+
+        List<VoucherTransferEntity> vouchers = pagedResult.getContent();
+        List<String> voucherCodes = vouchers.stream()
+                .map(VoucherTransferEntity::getVoucherCode)
+                .collect(Collectors.toList());
+
+        List<CertificateRequest> requests = certificateRequestRepository.findByVoucherCodeIn(voucherCodes);
+        Map<String, CertificateRequest> requestMap = requests.stream()
+                .collect(Collectors.toMap(CertificateRequest::getVoucherCode, req -> req, (v1, v2) -> v1)); // Keep first if duplicates exist
+                
+        List<Long> requestIds = requests.stream().map(CertificateRequest::getId).collect(Collectors.toList());
+        
+        Map<Long, OrCrRequest> orCrMap = orCrRequestRepository.findByCertificateRequestIdIn(requestIds)
+                .stream().collect(Collectors.toMap(req -> req.getCertificateRequest().getId(), req -> req, (v1, v2) -> v1));
+                
+        Map<Long, MvcMecRequest> mvcMap = mvcMecRequestRepository.findByCertificateRequestIdIn(requestIds)
+                .stream().collect(Collectors.toMap(req -> req.getCertificateRequest().getId(), req -> req, (v1, v2) -> v1));
+
+        List<VoucherTransferDTO> dtos = vouchers.stream().map(v -> {
+            VoucherTransferDTO dto = mapToResponse(v);
+            CertificateRequest req = requestMap.get(v.getVoucherCode());
+            
+            String computedStatus = dto.getStatus();
+            if ("AVAILABLE".equals(computedStatus) && req != null) {
+                computedStatus = "ASSIGNED";
+            }
+            dto.setComputedStatus(computedStatus);
+            
+            if (req != null) {
+                dto.setAssignedToId(req.getId());
+                
+                String plate = null;
+                OrCrRequest orcr = orCrMap.get(req.getId());
+                if (orcr != null && orcr.getPlateNumber() != null) {
+                    plate = orcr.getPlateNumber();
+                } else {
+                    MvcMecRequest mvc = mvcMap.get(req.getId());
+                    if (mvc != null && mvc.getPlateNumber() != null) {
+                        plate = mvc.getPlateNumber();
+                    }
+                }
+                dto.setAssignedToPlate(plate != null ? plate : "");
+            }
+            
+            return dto;
+        }).collect(Collectors.toList());
+
+        long allCount = voucherRepository.countByCurrentUserId(userId);
+        long availableCount = voucherRepository.countStrictlyAvailableByUserId(userId);
+        long assignedCount = voucherRepository.countAssignedByUserId(userId);
+        long usedCount = voucherRepository.countUsedByUserId(userId);
+        long expiredCount = voucherRepository.countExpiredByUserId(userId);
+
+        Map<String, Long> counts = new java.util.HashMap<>();
+        counts.put("all", allCount);
+        counts.put("available", availableCount);
+        counts.put("assigned", assignedCount);
+        counts.put("used", usedCount);
+        counts.put("expired", expiredCount);
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("content", dtos);
+        response.put("totalPages", pagedResult.getTotalPages());
+        response.put("totalElements", pagedResult.getTotalElements());
+        response.put("counts", counts);
+
+        return response;
     }
 
     /**
