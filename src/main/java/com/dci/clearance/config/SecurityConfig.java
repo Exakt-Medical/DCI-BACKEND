@@ -78,6 +78,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/my-requests/**").hasAnyRole("CITIZEN", "AGENT_FIXER", "ADMIN")
                         .requestMatchers("/api/attachment/**").authenticated()
                         .requestMatchers("/api/profile/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/support-ticket").authenticated()
                         .requestMatchers("/api/support-ticket/**").hasAnyRole("HPG", "DCI", "ADMIN")
                         .anyRequest().authenticated()
                 )

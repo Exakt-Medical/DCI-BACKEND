@@ -26,10 +26,14 @@ public class CertificateRequestController {
     private final UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<?> getMyRequests(Authentication auth) {
+    public ResponseEntity<?> getMyRequests(
+            Authentication auth,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String filter) {
         Long userId = getUserId(auth);
-        List<CertificateRequest> records = service.getMyRequests(userId);
-        List<Map<String, Object>> response = service.getRequestPayloads(records);
+        Map<String, Object> response = service.getMyRequestsPaginated(userId, page, size, search, filter);
 
         return ResponseEntity.ok(response);
     }
