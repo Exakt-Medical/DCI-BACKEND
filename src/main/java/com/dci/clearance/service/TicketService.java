@@ -69,7 +69,7 @@ public class TicketService {
                 .status(request.getStatus() != null ? request.getStatus() : "PENDING")
                 .requestedBy(request.getRequestedBy())
                 .type(request.getType())
-                .processedBy(getCurrentUser())
+                .processedBy(null)
                 // ✅ Always set both dates server-side in Manila time
                 .dateUpdated(LocalDateTime.now(MANILA))
                 .dateRequested(LocalDateTime.now(MANILA))
