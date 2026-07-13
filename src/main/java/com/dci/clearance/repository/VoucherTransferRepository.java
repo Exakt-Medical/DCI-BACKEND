@@ -26,6 +26,32 @@ public interface VoucherTransferRepository extends JpaRepository<VoucherTransfer
             @Param("search") String search,
             Pageable pageable);
 
+    @Query("SELECT v FROM VoucherTransferEntity v WHERE v.currentUserId = :userId " +
+           "AND (:activeFilter = 'ALL' OR " +
+           "     (:activeFilter = 'AVAILABLE' AND v.status = 'AVAILABLE' AND NOT EXISTS (SELECT 1 FROM CertificateRequest cr WHERE cr.voucherCode = v.voucherCode)) OR " +
+           "     (:activeFilter = 'ASSIGNED'  AND v.status = 'AVAILABLE' AND EXISTS (SELECT 1 FROM CertificateRequest cr WHERE cr.voucherCode = v.voucherCode)) OR " +
+           "     (:activeFilter = 'USED'      AND v.status = 'REDEEMED') OR " +
+           "     (:activeFilter = 'EXPIRED'   AND v.status = 'EXPIRED')" +
+           ") " +
+           "AND (:search IS NULL OR :search = '' OR LOWER(v.voucherCode) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<VoucherTransferEntity> findPaginatedAndFiltered(
+            @Param("userId") Long userId,
+            @Param("activeFilter") String activeFilter,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("SELECT COUNT(v) FROM VoucherTransferEntity v WHERE v.currentUserId = :userId AND v.status = 'AVAILABLE' AND NOT EXISTS (SELECT 1 FROM CertificateRequest cr WHERE cr.voucherCode = v.voucherCode)")
+    long countStrictlyAvailableByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(v) FROM VoucherTransferEntity v WHERE v.currentUserId = :userId AND v.status = 'AVAILABLE' AND EXISTS (SELECT 1 FROM CertificateRequest cr WHERE cr.voucherCode = v.voucherCode)")
+    long countAssignedByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(v) FROM VoucherTransferEntity v WHERE v.currentUserId = :userId AND v.status = 'REDEEMED'")
+    long countUsedByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(v) FROM VoucherTransferEntity v WHERE v.currentUserId = :userId AND v.status = 'EXPIRED'")
+    long countExpiredByUserId(@Param("userId") Long userId);
+
     List<VoucherTransferEntity> findByIdInAndCurrentUserIdAndStatus(
             List<Long> ids, Long currentUserId, String status);
 

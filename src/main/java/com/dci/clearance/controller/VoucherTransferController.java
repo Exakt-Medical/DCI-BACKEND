@@ -36,14 +36,15 @@ public class VoucherTransferController {
         return ResponseEntity.ok(voucherService.getByCurrentUser(userId));
     }
 
-    @GetMapping("/by-user/{userId}/available")
-    @Operation(summary = "Get paginated available vouchers for a user with optional search")
-    public ResponseEntity<Page<VoucherTransferDTO>> getAvailablePaginated(
+    @GetMapping("/by-user/{userId}/paginated")
+    @Operation(summary = "Get paginated vouchers for a user with status filter and search")
+    public ResponseEntity<Map<String, Object>> getAgentInventoryPaginated(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "8") int size,
-            @RequestParam(defaultValue = "") String search) {
-        return ResponseEntity.ok(voucherService.getAvailablePaginated(userId, page, size, search));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String filter) {
+        return ResponseEntity.ok(voucherService.getAgentInventoryPaginated(userId, page, size, search, filter));
     }
 
     @GetMapping("/by-user/{userId}/status/{status}")
