@@ -38,8 +38,36 @@ public class CertificateRequestService {
     private final OrCrRequestRepository orCrRequestRepository;
     private final MvcMecRequestRepository mvcMecRequestRepository;
 
-    public List<CertificateRequest> getMyRequests(Long userId) {
-        return repository.findByUserIdOrderByDateUpdatedDesc(userId);
+    public Map<String, Object> getMyRequestsPaginated(Long userId, int page, int size, String search, String activeFilter) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "dateUpdated"));
+        
+        org.springframework.data.domain.Page<CertificateRequest> pagedResult = repository.findPaginatedAndFiltered(
+            userId, 
+            activeFilter == null || activeFilter.isEmpty() ? "all" : activeFilter, 
+            search, 
+            pageable
+        );
+        
+        List<Map<String, Object>> payloads = getRequestPayloads(pagedResult.getContent());
+        
+        long allCount = repository.countByUserId(userId);
+        long completedCount = repository.countCompletedByUserId(userId);
+        long voucherCount = repository.countVoucherInProgressByUserId(userId);
+        long clearanceCount = repository.countClearanceAwaitingByUserId(userId);
+        
+        Map<String, Long> counts = new java.util.HashMap<>();
+        counts.put("all", allCount);
+        counts.put("completed", completedCount);
+        counts.put("voucher", voucherCount);
+        counts.put("clearance", clearanceCount);
+        
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("content", payloads);
+        response.put("totalPages", pagedResult.getTotalPages());
+        response.put("totalElements", pagedResult.getTotalElements());
+        response.put("counts", counts);
+        
+        return response;
     }
 
     public Optional<CertificateRequest> getRequestById(Long id) {
