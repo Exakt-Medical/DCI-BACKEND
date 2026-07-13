@@ -51,6 +51,9 @@ public class OrCrRequest {
     @Column(name = "owner_name", length = 255)
     private String ownerName;
 
+    @Column(name = "owner_address", length = 500)
+    private String ownerAddress;
+
     @CreationTimestamp
     @Column(name = "date_created", nullable = false, updatable = false)
     private LocalDateTime dateCreated;

@@ -204,6 +204,7 @@ public class CertificateRequestService {
                 if (orMap.get("series") != null) orCrReq.setSeries((String) orMap.get("series"));
                 if (orMap.get("yearModel") != null) orCrReq.setYearModel((String) orMap.get("yearModel"));
                 if (orMap.get("ownerName") != null) orCrReq.setOwnerName((String) orMap.get("ownerName"));
+                if (orMap.get("ownerAddress") != null) orCrReq.setOwnerAddress((String) orMap.get("ownerAddress"));
             }
             if (payload.containsKey("crCr")) {
                 Map<?, ?> crMap = (Map<?, ?>) payload.get("crCr");
@@ -236,6 +237,9 @@ public class CertificateRequestService {
                 }
                 if (crMap.get("ownerName") != null) {
                     orCrReq.setOwnerName((String) crMap.get("ownerName"));
+                }
+                if (crMap.get("ownerAddress") != null) {
+                    orCrReq.setOwnerAddress((String) crMap.get("ownerAddress"));
                 }
             }
             orCrRequestRepository.save(orCrReq);
@@ -431,6 +435,7 @@ public class CertificateRequestService {
                 vehicleMap.put("series", orCr.getSeries() != null ? orCr.getSeries() : "");
                 vehicleMap.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
                 vehicleMap.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
+                vehicleMap.put("ownerAddress", orCr.getOwnerAddress() != null ? orCr.getOwnerAddress() : "");
 
                 map.put("orCr", vehicleMap);
                 map.put("crCr", vehicleMap);
@@ -494,6 +499,16 @@ public class CertificateRequestService {
                             fullName = ownerDetails.getOrganization();
                         }
                         map.put("vvsOwnerName", fullName.isEmpty() ? "Unknown Owner" : fullName);
+                        
+                        List<String> addressParts = java.util.Arrays.asList(
+                            ownerDetails.getHouseBldgNo(), ownerDetails.getStreetName(),
+                            ownerDetails.getBarangay(), ownerDetails.getMunicipality(),
+                            ownerDetails.getProvince(), ownerDetails.getRegion(), ownerDetails.getZipCode()
+                        );
+                        String fullAddress = addressParts.stream()
+                            .filter(s -> s != null && !s.trim().isEmpty())
+                            .collect(java.util.stream.Collectors.joining(", "));
+                        map.put("vvsOwnerAddress", fullAddress);
                     }
                 }
             }
@@ -573,6 +588,16 @@ public class CertificateRequestService {
                     fullName = ownerDetails.getOrganization();
                 }
                 vehicleData.put("ownerName", fullName.isEmpty() ? "Unknown Owner" : fullName);
+
+                List<String> addressParts = java.util.Arrays.asList(
+                    ownerDetails.getHouseBldgNo(), ownerDetails.getStreetName(),
+                    ownerDetails.getBarangay(), ownerDetails.getMunicipality(),
+                    ownerDetails.getProvince(), ownerDetails.getRegion(), ownerDetails.getZipCode()
+                );
+                String fullAddress = addressParts.stream()
+                    .filter(s -> s != null && !s.trim().isEmpty())
+                    .collect(java.util.stream.Collectors.joining(", "));
+                vehicleData.put("ownerAddress", fullAddress);
             }
         }
         
