@@ -205,6 +205,8 @@ public class CertificateRequestService {
                 if (orMap.get("yearModel") != null) orCrReq.setYearModel((String) orMap.get("yearModel"));
                 if (orMap.get("ownerName") != null) orCrReq.setOwnerName((String) orMap.get("ownerName"));
                 if (orMap.get("ownerAddress") != null) orCrReq.setOwnerAddress((String) orMap.get("ownerAddress"));
+                if (orMap.get("bodyType") != null) orCrReq.setBodyType((String) orMap.get("bodyType"));
+                if (orMap.get("denomination") != null) orCrReq.setDenomination((String) orMap.get("denomination"));
             }
             if (payload.containsKey("crCr")) {
                 Map<?, ?> crMap = (Map<?, ?>) payload.get("crCr");
@@ -240,6 +242,12 @@ public class CertificateRequestService {
                 }
                 if (crMap.get("ownerAddress") != null) {
                     orCrReq.setOwnerAddress((String) crMap.get("ownerAddress"));
+                }
+                if (crMap.get("bodyType") != null) {
+                    orCrReq.setBodyType((String) crMap.get("bodyType"));
+                }
+                if (crMap.get("denomination") != null) {
+                    orCrReq.setDenomination((String) crMap.get("denomination"));
                 }
             }
             orCrRequestRepository.save(orCrReq);
@@ -436,6 +444,8 @@ public class CertificateRequestService {
                 vehicleMap.put("yearModel", orCr.getYearModel() != null ? orCr.getYearModel() : "");
                 vehicleMap.put("ownerName", orCr.getOwnerName() != null ? orCr.getOwnerName() : "");
                 vehicleMap.put("ownerAddress", orCr.getOwnerAddress() != null ? orCr.getOwnerAddress() : "");
+                vehicleMap.put("bodyType", orCr.getBodyType() != null ? orCr.getBodyType() : "");
+                vehicleMap.put("denomination", orCr.getDenomination() != null ? orCr.getDenomination() : "");
 
                 map.put("orCr", vehicleMap);
                 map.put("crCr", vehicleMap);
