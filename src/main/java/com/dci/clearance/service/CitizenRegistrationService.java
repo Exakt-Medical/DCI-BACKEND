@@ -46,7 +46,12 @@ public class CitizenRegistrationService {
             throw new IllegalArgumentException("Username already exists");
         }
 
-        // 2. Confirm password match
+        // 2. Email uniqueness check
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+
+        // 3. Confirm password match
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new IllegalArgumentException("Password and confirm password do not match");
         }
