@@ -54,6 +54,12 @@ public class OrCrRequest {
     @Column(name = "owner_address", length = 500)
     private String ownerAddress;
 
+    @Column(name = "body_type", length = 100)
+    private String bodyType;
+
+    @Column(name = "denomination", length = 100)
+    private String denomination;
+
     @CreationTimestamp
     @Column(name = "date_created", nullable = false, updatable = false)
     private LocalDateTime dateCreated;
