@@ -55,17 +55,28 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initRoles() {
-        if (roleRepository.count() == 0) {
+        if (roleRepository.findByRoleId("CITIZEN").isEmpty()) {
             roleRepository.save(Role.builder().roleId("CITIZEN").roleName("Citizen").build());
+        }
+        if (roleRepository.findByRoleId("AGENT_FIXER").isEmpty()) {
             roleRepository.save(Role.builder().roleId("AGENT_FIXER").roleName("Agent/Fixer").build());
+        }
+        if (roleRepository.findByRoleId("HPG").isEmpty()) {
             roleRepository.save(Role.builder().roleId("HPG").roleName("Highway Patrol Group").build());
+        }
+        if (roleRepository.findByRoleId("DCI").isEmpty()) {
             roleRepository.save(Role.builder().roleId("DCI").roleName("DCI Officer").build());
+        }
+        if (roleRepository.findByRoleId("ADMIN").isEmpty()) {
             roleRepository.save(Role.builder().roleId("ADMIN").roleName("System Administrator").build());
+        }
+        if (roleRepository.findByRoleId("LTO").isEmpty()) {
+            roleRepository.save(Role.builder().roleId("LTO").roleName("Land Transportation Office").build());
         }
     }
 
     private void initUsers() {
-        if (userRepository.count() == 0) {
+        if (!userRepository.existsByUsername("admin")) {
             userRepository.save(User.builder()
                     .username("admin")
                     .password(passwordEncoder.encode("admin123"))
@@ -75,7 +86,9 @@ public class DataInitializer implements CommandLineRunner {
                     .role(User.UserRole.ADMIN)
                     .status("ACTIVE")
                     .build());
+        }
 
+        if (!userRepository.existsByUsername("citizen")) {
             userRepository.save(User.builder()
                     .username("citizen")
                     .password(passwordEncoder.encode("citizen123"))
@@ -85,7 +98,9 @@ public class DataInitializer implements CommandLineRunner {
                     .role(User.UserRole.CITIZEN)
                     .status("ACTIVE")
                     .build());
+        }
 
+        if (!userRepository.existsByUsername("agent")) {
             userRepository.save(User.builder()
                     .username("agent")
                     .password(passwordEncoder.encode("agent123"))
@@ -95,7 +110,9 @@ public class DataInitializer implements CommandLineRunner {
                     .role(User.UserRole.AGENT_FIXER)
                     .status("ACTIVE")
                     .build());
+        }
 
+        if (!userRepository.existsByUsername("hpg")) {
             userRepository.save(User.builder()
                     .username("hpg")
                     .password(passwordEncoder.encode("hpg123"))
@@ -105,7 +122,9 @@ public class DataInitializer implements CommandLineRunner {
                     .role(User.UserRole.HPG)
                     .status("ACTIVE")
                     .build());
+        }
 
+        if (!userRepository.existsByUsername("dci")) {
             userRepository.save(User.builder()
                     .username("dci")
                     .password(passwordEncoder.encode("dci123"))
@@ -113,6 +132,18 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Officer")
                     .email("dci@dci.gov.ph")
                     .role(User.UserRole.DCI)
+                    .status("ACTIVE")
+                    .build());
+        }
+
+        if (!userRepository.existsByUsername("lto")) {
+            userRepository.save(User.builder()
+                    .username("lto")
+                    .password(passwordEncoder.encode("lto123"))
+                    .firstName("LTO")
+                    .lastName("Officer")
+                    .email("lto@dci.gov.ph")
+                    .role(User.UserRole.LTO)
                     .status("ACTIVE")
                     .build());
         }
