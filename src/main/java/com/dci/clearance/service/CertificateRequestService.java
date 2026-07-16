@@ -37,6 +37,7 @@ public class CertificateRequestService {
     private final VoucherService voucherService;
     private final OrCrRequestRepository orCrRequestRepository;
     private final MvcMecRequestRepository mvcMecRequestRepository;
+    private final NotificationService notificationService;
 
     public Map<String, Object> getMyRequestsPaginated(Long userId, int page, int size, String search, String activeFilter) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "dateUpdated"));
@@ -647,6 +648,29 @@ public class CertificateRequestService {
             record.setStatus("HPG_VERIFIED");
             voucher.setHpgVerified(true);
             voucherRepository.save(voucher);
+
+            // Notify the certificate request owner
+            if (record.getUser() != null) {
+                String verifierName = String.join(" ",
+                        verifier.getFirstName() != null ? verifier.getFirstName() : "",
+                        verifier.getLastName() != null ? verifier.getLastName() : ""
+                ).trim();
+                if (verifierName.isEmpty()) verifierName = verifier.getUsername();
+                String plateNo = record.getVoucherCode() != null ? record.getVoucherCode() : "";
+                OrCrRequest orCr = orCrRequestRepository.findByCertificateRequestId(record.getId()).orElse(null);
+                if (orCr != null && orCr.getPlateNumber() != null) {
+                    plateNo = orCr.getPlateNumber();
+                }
+                notificationService.notifyUserWithVerification(
+                        record.getUser(),
+                        "Request Verified by HPG",
+                        "Your clearance request for plate " + plateNo + " has been verified by " + verifierName + ".",
+                        "HPG_VERIFIED",
+                        record.getId(),
+                        plateNo,
+                        verifierName
+                );
+            }
         } else {
             if ("MVC_MEC_VALIDATED".equals(record.getStatus()) || 
                 "CERTIFICATE_ISSUED".equals(record.getStatus())) {
@@ -678,6 +702,29 @@ public class CertificateRequestService {
                 }
 
                 mvcMecRequestRepository.save(mvcMecReq);
+            }
+
+            // Notify the certificate request owner
+            if (record.getUser() != null) {
+                String verifierName = String.join(" ",
+                        verifier.getFirstName() != null ? verifier.getFirstName() : "",
+                        verifier.getLastName() != null ? verifier.getLastName() : ""
+                ).trim();
+                if (verifierName.isEmpty()) verifierName = verifier.getUsername();
+                String plateNo = "";
+                OrCrRequest orCr = orCrRequestRepository.findByCertificateRequestId(record.getId()).orElse(null);
+                if (orCr != null && orCr.getPlateNumber() != null) {
+                    plateNo = orCr.getPlateNumber();
+                }
+                notificationService.notifyUserWithVerification(
+                        record.getUser(),
+                        "Request Validated by DCI",
+                        "Your clearance request for plate " + plateNo + " has been validated by " + verifierName + ". You can now download your certificate.",
+                        "DCI_VALIDATED",
+                        record.getId(),
+                        plateNo,
+                        verifierName
+                );
             }
         }
 

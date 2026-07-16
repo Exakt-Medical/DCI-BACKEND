@@ -4,6 +4,7 @@ import com.dci.clearance.entity.CertificateRequest;
 import com.dci.clearance.entity.User;
 import com.dci.clearance.repository.UserRepository;
 import com.dci.clearance.service.CertificateRequestService;
+import com.dci.clearance.service.TransactionLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,6 +25,7 @@ public class CertificateRequestController {
 
     private final CertificateRequestService service;
     private final UserRepository userRepository;
+    private final TransactionLogService transactionLogService;
 
     @GetMapping
     public ResponseEntity<?> getMyRequests(
@@ -54,6 +56,10 @@ public class CertificateRequestController {
         Long userId = getUserId(auth);
         try {
             CertificateRequest saved = service.upsertRequest(userId, payload);
+            if ("CERTIFICATE_ISSUED".equals(saved.getStatus()) && saved.getCertificateNo() != null) {
+                String username = auth.getName();
+                transactionLogService.logTransaction(username, null, "DCI Certificate issued: " + saved.getCertificateNo(), "Certificate number: " + saved.getCertificateNo(), "WEB", "Authenticated");
+            }
             return ResponseEntity.ok(Map.of(
                 "message", "Saved successfully",
                 "id", saved.getId(),
@@ -96,6 +102,10 @@ public class CertificateRequestController {
             }
 
             CertificateRequest saved = service.verifyRequestByVoucherCode(voucherCode, user, mvcData, mecData);
+            String action = "HPG_VERIFIED".equals(saved.getStatus()) ? "HPG Verification" : "DCI Verification";
+            String desc = action + " completed for voucher: " + voucherCode;
+            String resp = "Status: " + saved.getStatus();
+            transactionLogService.logTransaction(user.getUsername(), null, desc, resp, "WEB", action.contains("HPG") ? "Verified" : "Authenticated");
             return ResponseEntity.ok(Map.of("message", "Voucher verified successfully", "id", saved.getId(), "status", saved.getStatus()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

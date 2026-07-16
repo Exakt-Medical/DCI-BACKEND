@@ -3,16 +3,15 @@ package com.dci.clearance.service;
 import com.dci.clearance.dto.DashboardResponseDto;
 import com.dci.clearance.dto.DashboardStatsDto;
 import com.dci.clearance.dto.RecentTransactionDto;
+import com.dci.clearance.dto.TopEmployeeDto;
 import com.dci.clearance.dto.TransactionLogDTO;
-import com.dci.clearance.entity.Purchase;
+import com.dci.clearance.entity.TransactionLog;
 import com.dci.clearance.entity.User;
 import com.dci.clearance.entity.VerificationRequest;
-import com.dci.clearance.entity.VoucherTransferEntity;
 import com.dci.clearance.repository.DciCertificateRepository;
-import com.dci.clearance.repository.PurchaseRepository;
+import com.dci.clearance.repository.TransactionLogRepository;
 import com.dci.clearance.repository.UserRepository;
 import com.dci.clearance.repository.VerificationRequestRepository;
-import com.dci.clearance.repository.VoucherTransferRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,7 +23,6 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -40,13 +38,25 @@ public class TransactionLogService {
     private final VerificationRequestRepository verificationRepo;
     private final DciCertificateRepository dciCertificateRepo;
     private final UserRepository userRepository;
-    private final PurchaseRepository purchaseRepository;
-    private final VoucherTransferRepository voucherTransferRepository;
+    private final TransactionLogRepository transactionLogRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("MMM. dd, yyyy hh:mm a");
 
     // ==================== TRANSACTION LOGS METHODS ====================
+
+    @Transactional
+    public void logTransaction(String accountName, String companyName, String description, String response, String origin, String status) {
+        TransactionLog log = TransactionLog.builder()
+                .accountName(accountName)
+                .companyName(companyName)
+                .description(description)
+                .response(response)
+                .origin(origin != null ? origin : "SYSTEM")
+                .status(status)
+                .build();
+        transactionLogRepository.save(log);
+    }
 
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public Map<String, Object> getTransactionLogs(String status, String searchTerm, int page, int size) {
@@ -78,35 +88,33 @@ public class TransactionLogService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("dateCreated").descending());
         Page<VerificationRequest> requestPage = verificationRepo.findAll(pageable);
 
-        // Calculate all stats
-        Long totalAgents = getTotalAgents();
-        Long totalTransactions = verificationRepo.count();
-        Long lastWeekAuthenticated = getLastWeekAuthenticatedCount();
-        Long todayAuthenticated = getTodayAuthenticatedCount();
-        Long todayPurchasedVouchers = getTodayPurchasedVouchersCount();
-        Long availableVouchers = getAvailableVouchersCount();
-        Long agentsCount = getAgentsCount();
-        Long subagentsCount = getSubagentsCount();
+        // Calculate core stats
+        Long totalUsers = userRepository.count();
+        Long totalTransactions = verificationRepo.countAll();
+        Long totalDciCertificates = dciCertificateRepo.count();
+        Long totalProcessedVehicles = verificationRepo.countDistinctPlateNumbers();
 
-        // Convert to DTOs for dashboard
+        // Get top employees
+        List<TopEmployeeDto> topDciEmployees = getTopEmployees(User.UserRole.DCI);
+        List<TopEmployeeDto> topHpgEmployees = getTopEmployees(User.UserRole.HPG);
+
+        log.info("Dashboard stats: totalUsers={}, totalTransactions={}, totalDciCerts={}, totalVehicles={}, dciTop={}, hpgTop={}",
+                totalUsers, totalTransactions, totalDciCertificates, totalProcessedVehicles,
+                topDciEmployees.size(), topHpgEmployees.size());
+
+        // Convert to DTOs for recent transactions table
         List<RecentTransactionDto> recentTransactions = requestPage.getContent().stream()
                 .map(this::convertToRecentTransactionDtoFromEntity)
                 .collect(Collectors.toList());
 
-        log.info("Dashboard stats: totalAgents={}, totalTransactions={}, lastWeekAuth={}, todayAuth={}, todayVouchers={}, availableVouchers={}, agents={}, subagents={}",
-                totalAgents, totalTransactions, lastWeekAuthenticated, todayAuthenticated,
-                todayPurchasedVouchers, availableVouchers, agentsCount, subagentsCount);
-
         return DashboardResponseDto.builder()
                 .stats(DashboardStatsDto.builder()
-                        .totalAgents(totalAgents != null ? totalAgents : 0L)
+                        .totalUsers(totalUsers)
                         .totalTransactions(totalTransactions)
-                        .lastWeekAuthenticated(lastWeekAuthenticated != null ? lastWeekAuthenticated : 0L)
-                        .todayAuthenticated(todayAuthenticated != null ? todayAuthenticated : 0L)
-                        .todayPurchasedVouchers(todayPurchasedVouchers != null ? todayPurchasedVouchers : 0L)
-                        .availableVouchers(availableVouchers != null ? availableVouchers : 0L)
-                        .agentsCount(agentsCount != null ? agentsCount : 0L)
-                        .subagentsCount(subagentsCount != null ? subagentsCount : 0L)
+                        .totalDciCertificates(totalDciCertificates)
+                        .totalProcessedVehicles(totalProcessedVehicles)
+                        .topDciEmployees(topDciEmployees)
+                        .topHpgEmployees(topHpgEmployees)
                         .build())
                 .recentTransactions(recentTransactions)
                 .totalPages(requestPage.getTotalPages())
@@ -116,104 +124,48 @@ public class TransactionLogService {
     }
 
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getTotalAgents() {
+    private List<TopEmployeeDto> getTopEmployees(User.UserRole role) {
         try {
-            long agents = userRepository.countByRole(User.UserRole.AGENT_FIXER);
-            long subagents = userRepository.countByRole(User.UserRole.AGENT_FIXER);
-            return agents + subagents;
-        } catch (Exception e) {
-            log.error("Error counting total agents: {}", e.getMessage());
-            return 0L;
-        }
-    }
+            List<User> users = userRepository.findByRole(role);
+            if (users.isEmpty()) {
+                return java.util.Collections.emptyList();
+            }
 
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getLastWeekAuthenticatedCount() {
-        try {
-            LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
-            return verificationRepo.countAuthenticatedSince(oneWeekAgo);
-        } catch (Exception e) {
-            log.error("Error counting last week authenticated: {}", e.getMessage());
-            return 0L;
-        }
-    }
-
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getTodayAuthenticatedCount() {
-        try {
-            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-            return verificationRepo.countAuthenticatedSince(todayStart);
-        } catch (Exception e) {
-            log.error("Error counting today authenticated: {}", e.getMessage());
-            return 0L;
-        }
-    }
-
-    /**
-     * Get count of vouchers purchased today from the purchases table
-     */
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getTodayPurchasedVouchersCount() {
-        try {
-            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-            LocalDateTime todayEnd = LocalDate.now().atTime(23, 59, 59);
-
-            List<Purchase> todayPurchases = purchaseRepository.findAll().stream()
-                    .filter(p -> p.getPurchaseDate() != null)
-                    .filter(p -> p.getPurchaseDate().isAfter(todayStart) && p.getPurchaseDate().isBefore(todayEnd))
+            List<Long> userIds = users.stream()
+                    .map(User::getId)
                     .collect(Collectors.toList());
 
-            long totalVouchers = todayPurchases.size();
-            log.debug("Today's purchased vouchers count: {}", totalVouchers);
-            return totalVouchers;
+            List<Object[]> counts = verificationRepo.countByRequestedByIn(userIds);
+
+            // Create a map of userId -> count
+            Map<Long, Long> countMap = new HashMap<>();
+            for (Object[] row : counts) {
+                Long userId = ((Number) row[0]).longValue();
+                Long count = ((Number) row[1]).longValue();
+                countMap.put(userId, count);
+            }
+
+            // Map users to TopEmployeeDto with their counts
+            return users.stream()
+                    .map(u -> {
+                        long count = countMap.getOrDefault(u.getId(), 0L);
+                        String name = String.join(" ",
+                                u.getFirstName() != null ? u.getFirstName() : "",
+                                u.getLastName() != null ? u.getLastName() : ""
+                        ).trim();
+                        if (name.isEmpty()) name = u.getUsername();
+                        return TopEmployeeDto.builder()
+                                .name(name)
+                                .username(u.getUsername())
+                                .count(count)
+                                .build();
+                    })
+                    .sorted((a, b) -> Long.compare(b.getCount(), a.getCount()))
+                    .limit(5)
+                    .collect(Collectors.toList());
         } catch (Exception e) {
-            log.error("Error counting today purchased vouchers: {}", e.getMessage());
-            return 0L;
-        }
-    }
-
-    /**
-     * Get count of available vouchers from the vouchers table
-     * Available vouchers = vouchers with status 'AVAILABLE' that are not expired
-     */
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getAvailableVouchersCount() {
-        try {
-            LocalDateTime now = LocalDateTime.now();
-
-            // Get all vouchers with status AVAILABLE
-            List<VoucherTransferEntity> availableVouchers = voucherTransferRepository.findByStatus("AVAILABLE");
-
-            // Filter out expired ones
-            long count = availableVouchers.stream()
-                    .filter(v -> v.getExpiresAt() == null || v.getExpiresAt().isAfter(now))
-                    .count();
-
-            log.debug("Available vouchers count: {}", count);
-            return count;
-        } catch (Exception e) {
-            log.error("Error counting available vouchers: {}", e.getMessage());
-            return 0L;
-        }
-    }
-
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getAgentsCount() {
-        try {
-            return userRepository.countByRole(User.UserRole.AGENT_FIXER);
-        } catch (Exception e) {
-            log.error("Error counting agents: {}", e.getMessage());
-            return 0L;
-        }
-    }
-
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    private Long getSubagentsCount() {
-        try {
-            return userRepository.countByRole(User.UserRole.AGENT_FIXER);
-        } catch (Exception e) {
-            log.error("Error counting subagents: {}", e.getMessage());
-            return 0L;
+            log.error("Error getting top employees for role {}: {}", role, e.getMessage());
+            return java.util.Collections.emptyList();
         }
     }
 

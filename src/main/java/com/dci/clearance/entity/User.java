@@ -45,6 +45,10 @@ public class User {
     @Builder.Default
     private String status = "ACTIVE";
 
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
+
     @Column(name = "billeroo_sync_status", length = 20, nullable = false)
     @Builder.Default
     private String billerooSyncStatus = "PENDING";

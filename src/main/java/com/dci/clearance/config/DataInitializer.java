@@ -50,6 +50,39 @@ public class DataInitializer implements CommandLineRunner {
             try { stmt.execute("ALTER TABLE users DROP COLUMN `manager_id`"); } catch (Exception ignored) {}
             try { stmt.execute("ALTER TABLE users ADD COLUMN `company_code` varchar(100) DEFAULT NULL"); } catch (Exception ignored) {}
             try { stmt.execute("ALTER TABLE users ADD COLUMN `branch_ref` varchar(50) DEFAULT NULL"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE access_trail ADD COLUMN `role` varchar(50) DEFAULT NULL"); } catch (Exception ignored) {}
+            try { stmt.execute("ALTER TABLE access_trail ADD COLUMN `action` varchar(20) DEFAULT NULL"); } catch (Exception ignored) {}
+
+            try { stmt.execute("ALTER TABLE users ADD COLUMN `email_verified` BOOLEAN NOT NULL DEFAULT FALSE"); } catch (Exception ignored) {}
+            try { stmt.execute("UPDATE users SET email_verified = TRUE WHERE email IS NOT NULL AND email != ''"); } catch (Exception ignored) {}
+
+            // Create email_verification_tokens table if not exists
+            try {
+                stmt.execute("CREATE TABLE IF NOT EXISTS email_verification_tokens (" +
+                        "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                        "token VARCHAR(128) NOT NULL UNIQUE, " +
+                        "user_id BIGINT NOT NULL, " +
+                        "expiry_date DATETIME NOT NULL, " +
+                        "used BOOLEAN NOT NULL DEFAULT FALSE, " +
+                        "date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                        "CONSTRAINT fk_evt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
+                        ")");
+            } catch (Exception ignored) {}
+
+            // Create user_notifications table if not exists
+            try {
+                stmt.execute("CREATE TABLE IF NOT EXISTS user_notifications (" +
+                        "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                        "user_id BIGINT NOT NULL, " +
+                        "title VARCHAR(200) NOT NULL, " +
+                        "message VARCHAR(500) NOT NULL, " +
+                        "type VARCHAR(50) NOT NULL, " +
+                        "reference_id BIGINT DEFAULT NULL, " +
+                        "is_read BOOLEAN NOT NULL DEFAULT FALSE, " +
+                        "date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                        "CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
+                        ")");
+            } catch (Exception ignored) {}
 
         } catch (Exception ignored) {}
     }

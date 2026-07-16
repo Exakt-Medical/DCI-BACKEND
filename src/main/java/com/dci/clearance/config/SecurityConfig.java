@@ -61,6 +61,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/health/**").permitAll()
                         .requestMatchers("/api/merchant-callback/**").permitAll()
                         .requestMatchers("/api/vouchers/**").permitAll()
                         .requestMatchers("/api/voucher-transfer/**").permitAll()

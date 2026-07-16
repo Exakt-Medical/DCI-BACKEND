@@ -6,6 +6,7 @@ import com.dci.clearance.dto.VoucherValidateResponse;
 import com.dci.clearance.dto.VvsLookupResponse;
 import com.dci.clearance.security.UserDetailsImpl;
 import com.dci.clearance.service.DciCertificateService;
+import com.dci.clearance.service.TransactionLogService;
 import com.dci.clearance.service.VerificationService;
 import com.dci.clearance.service.VoucherService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,6 +29,7 @@ public class VvipController {
     private final VerificationService   verificationService;
     private final DciCertificateService dciCertificateService;
     private final VoucherService voucherService;
+    private final TransactionLogService transactionLogService;
 
     @PostMapping("/verify")
     @Operation(summary = "Submit vehicle identifiers for VVS verification")
@@ -36,6 +38,11 @@ public class VvipController {
             @AuthenticationPrincipal UserDetails principal) {
 
         VehicleVerificationResponse result = verificationService.verify(request, resolveUserId(principal));
+        String username = principal != null ? principal.getUsername() : "System";
+        String status = result.getVerificationStatus();
+        String desc = "Vehicle verification initiated for plate: " + (request.getPlateNumber() != null ? request.getPlateNumber() : "N/A");
+        String resp = "Verification status: " + status;
+        transactionLogService.logTransaction(username, null, desc, resp, "WEB", "Verified".equals(status) ? "Verified" : "Failed");
         return toResponseEntity(result);
     }
 
@@ -47,6 +54,11 @@ public class VvipController {
             @AuthenticationPrincipal UserDetails principal) {
 
         VehicleVerificationResponse result = verificationService.confirm(verificationId, request, resolveUserId(principal));
+        String username = principal != null ? principal.getUsername() : "System";
+        String certNo = result.getCertificateNo();
+        String desc = "Certificate issued: " + (certNo != null ? certNo : "N/A") + " for verification #" + verificationId;
+        String resp = "Certificate: " + (certNo != null ? certNo : "N/A");
+        transactionLogService.logTransaction(username, null, desc, resp, "WEB", "Authenticated");
         return toResponseEntity(result);
     }
 
