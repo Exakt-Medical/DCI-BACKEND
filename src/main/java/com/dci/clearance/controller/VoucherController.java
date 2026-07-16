@@ -5,6 +5,7 @@ import com.dci.clearance.dto.PurchaseRequest;
 import com.dci.clearance.dto.PurchaseResponseDTO;
 import com.dci.clearance.entity.InsuranceProduct;
 import com.dci.clearance.service.InsuranceFeeService;
+import com.dci.clearance.service.TransactionLogService;
 import com.dci.clearance.service.VoucherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,6 +27,7 @@ public class VoucherController {
 
     private final VoucherService voucherService;
     private final InsuranceFeeService insuranceFeeService;
+    private final TransactionLogService transactionLogService;
 
     @GetMapping("/products")
     @Operation(summary = "List all insurance products")
@@ -52,7 +54,9 @@ public class VoucherController {
     public ResponseEntity<PurchaseResponseDTO> purchase(
             @RequestBody PurchaseRequest request,
             Authentication auth) {
-        return ResponseEntity.ok(voucherService.purchase(request.getProductId(), auth.getName()));
+        PurchaseResponseDTO result = voucherService.purchase(request.getProductId(), auth.getName());
+        transactionLogService.logTransaction(auth.getName(), null, "Voucher purchased: " + (result.getVoucherCode() != null ? result.getVoucherCode() : "N/A"), "Purchase successful", "WEB", "Authenticated");
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/history")
@@ -69,8 +73,11 @@ public class VoucherController {
 
     @PostMapping("/redeem")
     @Operation(summary = "Redeem a voucher (mark as redeemed)")
-    public ResponseEntity<Map<String, String>> redeemVoucher(@RequestBody Map<String, String> body) {
-        voucherService.redeemVoucher(body.get("voucherCode"));
+    public ResponseEntity<Map<String, String>> redeemVoucher(@RequestBody Map<String, String> body, Authentication auth) {
+        String voucherCode = body.get("voucherCode");
+        voucherService.redeemVoucher(voucherCode);
+        String username = auth != null ? auth.getName() : "System";
+        transactionLogService.logTransaction(username, null, "Voucher redeemed: " + voucherCode, "Redemption successful", "WEB", "Authenticated");
         return ResponseEntity.ok(Map.of("message", "Voucher redeemed successfully"));
     }
 }

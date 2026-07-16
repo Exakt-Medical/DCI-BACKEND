@@ -20,6 +20,12 @@ public class AccessTrail {
     @Column(name = "username", length = 100)
     private String username;
 
+    @Column(name = "role", length = 50)
+    private String role;
+
+    @Column(name = "action", length = 20)
+    private String action;
+
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
 }

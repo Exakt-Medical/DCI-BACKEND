@@ -52,7 +52,7 @@ public interface VerificationRequestRepository extends JpaRepository<Verificatio
     @Query(value = "SELECT " +
             "vr.id, " +
             "vr.reference_no, " +
-            "TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.middle_initial, ''), ' ', COALESCE(u.last_name, ''))) AS account, " +
+            "TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS account, " +
             "CONCAT(COALESCE(c.company_name, b.branch_name), ' - ', b.branch_name) AS company, " +
             "vr.verification_status, " +
             "vr.plate_number, " +
@@ -64,6 +64,8 @@ public interface VerificationRequestRepository extends JpaRepository<Verificatio
             "vr.engine_number " +
             "FROM verification_requests vr " +
             "LEFT JOIN users u ON u.id = vr.requested_by " +
+            "LEFT JOIN companies c ON CONVERT(c.code USING utf8mb4) = CONVERT(u.company_code USING utf8mb4) " +
+            "LEFT JOIN branches b ON CONVERT(b.branch_id USING utf8mb4) = CONVERT(u.branch_ref USING utf8mb4) " +
             "LEFT JOIN dci_certificates cert ON cert.verification_id = vr.id " +
             "WHERE (:status IS NULL " +
             "OR (:status = 'Authenticated' AND vr.verification_status = 'COMPLETED') " +
@@ -98,4 +100,16 @@ public interface VerificationRequestRepository extends JpaRepository<Verificatio
 
     @Query("SELECT COUNT(vr) FROM VerificationRequest vr WHERE vr.verificationStatus IN ('FAILED','ERROR')")
     long countFailed();
+
+    // Dashboard: count transactions grouped by requestedBy user IDs
+    @Query("SELECT vr.requestedBy, COUNT(vr) FROM VerificationRequest vr WHERE vr.requestedBy IN :userIds GROUP BY vr.requestedBy")
+    java.util.List<Object[]> countByRequestedByIn(@Param("userIds") java.util.List<Long> userIds);
+
+    // Dashboard: count distinct plate numbers (total processed vehicles)
+    @Query("SELECT COUNT(DISTINCT vr.plateNumber) FROM VerificationRequest vr WHERE vr.plateNumber IS NOT NULL AND vr.plateNumber != ''")
+    long countDistinctPlateNumbers();
+
+    // Dashboard: count total verification requests (all statuses)
+    @Query("SELECT COUNT(vr) FROM VerificationRequest vr")
+    long countAll();
 }

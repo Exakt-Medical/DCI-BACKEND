@@ -11,5 +11,7 @@ import java.time.LocalDateTime;
 public class AccessTrailResponse {
     private Long id;
     private String username;
+    private String role;
+    private String action;
     private LocalDateTime timestamp;
 }

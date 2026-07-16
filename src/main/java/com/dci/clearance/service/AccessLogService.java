@@ -25,9 +25,22 @@ public class AccessLogService {
     }
 
     @Transactional
-    public void logLogin(String username) {
+    public void logLogin(String username, String role) {
         AccessTrail accessTrail = AccessTrail.builder()
                 .username(username)
+                .role(role)
+                .action("LOGIN")
+                .timestamp(LocalDateTime.now())
+                .build();
+        accessTrailRepository.save(accessTrail);
+    }
+
+    @Transactional
+    public void logLogout(String username, String role) {
+        AccessTrail accessTrail = AccessTrail.builder()
+                .username(username)
+                .role(role)
+                .action("LOGOUT")
                 .timestamp(LocalDateTime.now())
                 .build();
         accessTrailRepository.save(accessTrail);
@@ -37,6 +50,8 @@ public class AccessLogService {
         return AccessTrailResponse.builder()
                 .id(accessTrail.getId())
                 .username(accessTrail.getUsername())
+                .role(accessTrail.getRole())
+                .action(accessTrail.getAction())
                 .timestamp(accessTrail.getTimestamp())
                 .build();
     }

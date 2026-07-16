@@ -1,27 +1,21 @@
 package com.dci.clearance.service;
 
 import com.dci.clearance.dto.CitizenRegisterRequest;
+import com.dci.clearance.entity.EmailVerificationToken;
 import com.dci.clearance.entity.User;
+import com.dci.clearance.repository.EmailVerificationTokenRepository;
 import com.dci.clearance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Orchestrates citizen registration end-to-end:
- *
- * <ol>
- *   <li>Validates input (username uniqueness, password confirmation)</li>
- *   <li>Creates the user with CITIZEN role and PENDING sync status</li>
- *   <li>Delegates shadow-company creation + Billeroo sync to {@link AccountSetupService}</li>
- *   <li>Persists the final user state</li>
- * </ol>
- *
- * <p>Registration always succeeds (returns 201) regardless of Billeroo availability.
- * The retry job handles failed syncs asynchronously.
- */
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.HexFormat;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,27 +25,22 @@ public class CitizenRegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final AccountSetupService accountSetupService;
     private final AuditTrailService auditTrailService;
+    private final EmailService emailService;
+    private final EmailVerificationTokenRepository verificationTokenRepository;
 
-    /**
-     * Registers a new citizen account.
-     *
-     * @param request the registration request (already validated by @Valid)
-     * @return the persisted User entity
-     * @throws IllegalArgumentException if username already exists or passwords don't match
-     */
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Transactional
     public User registerCitizen(CitizenRegisterRequest request) {
-        // 1. Username uniqueness check
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
         }
 
-        // 2. Confirm password match
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new IllegalArgumentException("Password and confirm password do not match");
         }
 
-        // 3. Create citizen user with PENDING sync status
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -60,19 +49,15 @@ public class CitizenRegistrationService {
                 .email(request.getEmail())
                 .role(User.UserRole.CITIZEN)
                 .status("ACTIVE")
+                .emailVerified(false)
                 .billerooSyncStatus("PENDING")
                 .billerooRetryCount(0)
                 .build();
         user = userRepository.save(user);
 
-        // 4. Shadow company creation + Billeroo sync attempt
-        //    (AccountSetupService sets companyCode and billerooSyncStatus on the user)
         accountSetupService.setupCompanyAndBranch(user);
-
-        // 5. Persist final user state (sync status is now SYNCED or FAILED)
         user = userRepository.save(user);
 
-        // 6. Audit trail
         auditTrailService.logAction(
                 "Register",
                 "Citizen registered: " + request.getUsername()
@@ -84,6 +69,28 @@ public class CitizenRegistrationService {
         log.info("Citizen registration completed: username={}, companyCode={}, syncStatus={}",
                 user.getUsername(), user.getCompanyCode(), user.getBillerooSyncStatus());
 
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            sendVerificationEmail(user);
+        }
+
         return user;
+    }
+
+    private void sendVerificationEmail(User user) {
+        byte[] tokenBytes = new byte[32];
+        new SecureRandom().nextBytes(tokenBytes);
+        String token = HexFormat.of().formatHex(tokenBytes);
+
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusHours(24))
+                .used(false)
+                .build();
+        verificationTokenRepository.save(verificationToken);
+
+        String verificationUrl = frontendUrl + "/dci-access/verify-email?token=" + token;
+        String firstName = user.getFirstName() != null ? user.getFirstName() : user.getUsername();
+        emailService.sendVerificationEmail(user.getEmail(), firstName, verificationUrl);
     }
 }

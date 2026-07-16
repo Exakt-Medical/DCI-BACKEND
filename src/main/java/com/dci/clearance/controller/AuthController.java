@@ -3,6 +3,7 @@ package com.dci.clearance.controller;
 import com.dci.clearance.dto.CitizenRegisterRequest;
 import com.dci.clearance.dto.LoginRequest;
 import com.dci.clearance.dto.LoginResponse;
+import com.dci.clearance.dto.OtpRequest;
 import com.dci.clearance.entity.User;
 import com.dci.clearance.service.AccessLogService;
 import com.dci.clearance.service.AuthService;
@@ -24,7 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Login and registration")
+@Tag(name = "Authentication", description = "Login, OTP verification and registration")
 public class AuthController {
 
     private final AuthService authService;
@@ -33,13 +34,22 @@ public class AuthController {
     private final CitizenRegistrationService citizenRegistrationService;
 
     @PostMapping("/login")
-    @Operation(summary = "Login with username and password", description = "Returns JWT token")
+    @Operation(summary = "Login with username and password", description = "Returns OTP required response (sends OTP to email)")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
-            LoginResponse response = authService.login(request);
-            // Log successful login into both audit trail and access trail
-            auditTrailService.logAction("Login", "User logged in successfully", request.getUsername(), response.getRole());
-            accessLogService.logLogin(request.getUsername());
+            Object response = authService.login(request);
+            return ResponseEntity.ok(response);
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    @Operation(summary = "Verify OTP and complete login", description = "Validates OTP code and returns JWT token")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody OtpRequest request) {
+        try {
+            LoginResponse response = authService.verifyOtp(request.getUserId(), request.getOtpCode());
+            accessLogService.logLogin(response.getUsername(), response.getRole());
             return ResponseEntity.ok(response);
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
@@ -55,7 +65,7 @@ public class AuthController {
                     .findFirst()
                     .map(g -> g.getAuthority().replace("ROLE_", ""))
                     .orElse("UNKNOWN");
-            auditTrailService.logAction("Logout", "User logged out", username, role);
+            accessLogService.logLogout(username, role);
         }
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
@@ -85,7 +95,7 @@ public class AuthController {
         try {
             User user = citizenRegistrationService.registerCitizen(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "message", "Registration successful",
+                    "message", "Registration successful. Please check your email to verify your account.",
                     "username", user.getUsername(),
                     "firstName", user.getFirstName(),
                     "lastName", user.getLastName(),
@@ -96,4 +106,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-}
+
+    @GetMapping("/verify-email")
+    @Operation(summary = "Verify email address via token", description = "Activates user account when verification link is clicked")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        try {
+            authService.verifyEmail(token);
+            return ResponseEntity.ok(Map.of("message", "Email verified successfully. You can now log in."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+}
