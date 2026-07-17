@@ -55,9 +55,10 @@ public class EmailController {
         String certificateNo = (String) body.getOrDefault("certificateNo", "");
         String plateNo = (String) body.getOrDefault("plateNo", "");
         String voucherCode = (String) body.getOrDefault("voucherCode", null);
+        String pdfBase64 = (String) body.getOrDefault("pdfBase64", null);
 
         String firstName = user.getFirstName() != null ? user.getFirstName() : user.getUsername();
-        emailService.sendCertificateEmail(user.getEmail(), firstName, certificateNo, plateNo, voucherCode);
+        emailService.sendCertificateEmail(user.getEmail(), firstName, certificateNo, plateNo, voucherCode, pdfBase64);
 
         return ResponseEntity.ok(Map.of(
                 "message", "Certificate sent to " + user.getEmail(),
